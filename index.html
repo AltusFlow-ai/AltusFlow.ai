@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="We build fully automated growth engines for high-value businesses. Premium web design with native AI chat, automated traffic, and intent-based outbound sourcing." />
+  <meta name="theme-color" content="#0a0a0a" />
+  <title>AltusFlow.ai — Automated Growth for High-Value Businesses</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            surface: { DEFAULT: '#0a0a0a', raised: '#111111', overlay: '#161616' },
+            accent: { DEFAULT: '#6366f1', light: '#818cf8', muted: '#4f46e5', glow: 'rgba(99, 102, 241, 0.15)' },
+          },
+          fontFamily: { sans: ['Geist', 'Inter', 'system-ui', '-apple-system', 'sans-serif'] },
+          lineHeight: { relaxed: '1.75', loose: '1.85' },
+          transitionTimingFunction: { smooth: 'cubic-bezier(0.4, 0, 0.2, 1)' },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.1/dist/sans.css" />
+  <style>
+    :root { --bg-base: #0a0a0a; --glass-bg: rgba(255,255,255,0.03); --glass-border: rgba(255,255,255,0.08); --glass-hover: rgba(255,255,255,0.06); --accent: #6366f1; --accent-glow: rgba(99,102,241,0.4); }
+    body { background-color: var(--bg-base); line-height: 1.75; -webkit-font-smoothing: antialiased; }
+    .ambient-mesh { background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99,102,241,0.18), transparent), radial-gradient(ellipse 60% 40% at 100% 0%, rgba(99,102,241,0.08), transparent), radial-gradient(ellipse 50% 30% at 0% 100%, rgba(99,102,241,0.06), transparent); }
+    .glass { background: var(--glass-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); }
+    .glass-card { background: rgba(255,255,255,0.02); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.07); transition: border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease; }
+    .glass-card:hover { background: var(--glass-hover); border-color: rgba(99,102,241,0.25); box-shadow: 0 0 0 1px rgba(99,102,241,0.1), 0 24px 48px -12px rgba(0,0,0,0.5); transform: translateY(-2px); }
+    .btn-primary { background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); transition: all 0.25s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 1px 2px rgba(0,0,0,0.3); }
+    .btn-primary:hover { background: linear-gradient(135deg, #818cf8 0%, #6366f1 100%); transform: translateY(-1px); box-shadow: 0 4px 24px rgba(99,102,241,0.35); }
+    .btn-secondary { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1); transition: all 0.25s cubic-bezier(0.4,0,0.2,1); }
+    .btn-secondary:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.18); transform: translateY(-1px); }
+    .nav-link { transition: color 0.2s ease; }
+    .nav-link:hover { color: #fafafa; }
+    .input-dark { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: #fafafa; transition: border-color 0.2s ease, box-shadow 0.2s ease; }
+    .input-dark::placeholder { color: rgba(161,161,170,0.6); }
+    .input-dark:focus { outline: none; border-color: rgba(99,102,241,0.5); background: rgba(255,255,255,0.06); box-shadow: 0 0 0 3px rgba(99,102,241,0.15); }
+    .input-dark option { background: #161616; color: #fafafa; }
+    .chat-widget { transition: all 0.25s cubic-bezier(0.4,0,0.2,1); box-shadow: 0 4px 24px rgba(99,102,241,0.3); }
+    .chat-widget:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 8px 32px rgba(99,102,241,0.45); }
+    .section-divider { border-color: rgba(255,255,255,0.06); }
+    .glass-card:hover .icon-glow { background: rgba(99,102,241,0.15); color: #a5b4fc; }
+    .icon-glow { transition: background 0.3s ease, color 0.3s ease; }
+    #chat-panel { transform-origin: bottom right; transition: opacity 0.25s ease, transform 0.25s cubic-bezier(0.4,0,0.2,1); }
+    #chat-panel.hidden { opacity: 0; transform: scale(0.95) translateY(8px); pointer-events: none; }
+    #chat-panel.chat-panel-open { opacity: 1; transform: scale(1) translateY(0); }
+    #chat-messages { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.15) transparent; }
+    #chat-messages::-webkit-scrollbar { width: 4px; }
+    #chat-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+    .chat-typing-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #818cf8; animation: chat-bounce 0.6s ease-in-out infinite; }
+    @keyframes chat-bounce { 0%, 100% { transform: translateY(0); opacity: 0.4; } 50% { transform: translateY(-4px); opacity: 1; } }
+    .chat-cta-link { display: inline-block; margin-top: 0.5rem; color: #818cf8; font-weight: 500; text-decoration: none; transition: color 0.2s ease; }
+    .chat-cta-link:hover { color: #a5b4fc; text-decoration: underline; }
+    #chat-quick-actions { scrollbar-width: none; }
+    #chat-quick-actions::-webkit-scrollbar { display: none; }
+  </style>
+</head>
+<body class="font-sans text-zinc-300 antialiased ambient-mesh">
+
+  <header class="sticky top-0 z-40 glass border-b border-white/[0.06]">
+    <nav class="mx-auto flex max-w-6xl items-center justify-between px-6 py-5" aria-label="Main navigation">
+      <a href="#" class="text-lg font-semibold tracking-tight text-white">AltusFlow<span class="text-accent-light">.ai</span></a>
+      <div class="hidden items-center gap-10 md:flex">
+        <a href="#problem" class="nav-link text-sm font-medium text-zinc-400">The Problem</a>
+        <a href="#verticals" class="nav-link text-sm font-medium text-zinc-400">Our Systems</a>
+        <a href="#proof" class="nav-link text-sm font-medium text-zinc-400">The Advantage</a>
+        <a href="#contact" class="btn-primary rounded-lg px-5 py-2.5 text-sm font-medium text-white">Fix Your Leaky Bucket</a>
+      </div>
+    </nav>
+  </header>
+
+  <main>
+    <section id="hero" class="relative overflow-hidden py-28 md:py-40">
+      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(99,102,241,0.12)_0%,_transparent_70%)]" aria-hidden="true"></div>
+      <div class="relative mx-auto max-w-6xl px-6">
+        <div class="mx-auto max-w-4xl text-center">
+          <p class="mb-8 inline-flex items-center rounded-full glass px-4 py-1.5 text-sm font-medium text-accent-light">3-Vertical Growth Ecosystem</p>
+          <h1 class="text-4xl font-semibold leading-[1.15] tracking-tight text-white sm:text-5xl lg:text-6xl lg:leading-[1.1]">We Build Fully Automated Growth Engines For High-Value Businesses.</h1>
+          <p class="mx-auto mt-8 max-w-2xl text-lg leading-loose text-zinc-400 sm:text-xl">Stop losing revenue to slow follow-ups and broken marketing. We plug your leaky bucket by combining premium web design with native AI chat support, automated traffic, and intent-based outbound sourcing.</p>
+          <div class="mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row sm:gap-5">
+            <a href="#contact" class="btn-primary inline-flex w-full items-center justify-center rounded-xl px-8 py-4 text-base font-medium text-white sm:w-auto">Fix Your Leaky Bucket</a>
+            <a href="#chatbot-demo" class="btn-secondary inline-flex w-full items-center justify-center rounded-xl px-8 py-4 text-base font-medium text-zinc-200 sm:w-auto">See The AI Chatbot In Action</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="problem" class="py-28 md:py-36">
+      <div class="mx-auto max-w-6xl px-6">
+        <div class="mx-auto max-w-3xl text-center">
+          <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Most Marketing Budgets Are A Leaky Bucket</h2>
+        </div>
+        <div class="glass-card mx-auto mt-16 max-w-4xl space-y-8 rounded-2xl p-10 text-center sm:p-14">
+          <p class="text-lg leading-loose text-zinc-400">You spend thousands every month driving traffic to your website. Paid ads, SEO, social campaigns — the pipeline fills up. Then nothing happens. Visitors land on a passive brochure that can't answer a single question at 7 PM on a Saturday. Your sales team follows up three days later. The lead has already booked with your competitor.</p>
+          <p class="text-lg leading-loose text-zinc-400">Every unanswered question, every slow response, every missed after-hours inquiry is revenue pouring straight through the holes in your bucket. The problem isn't your traffic. It's that your website was never built to sell.</p>
+          <p class="text-lg font-medium leading-loose text-white">We turn your website into an active, 24/7 automated sales pipeline — one that qualifies leads, answers objections, and books meetings while you sleep.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="verticals" class="py-28 md:py-36">
+      <div class="mx-auto max-w-6xl px-6">
+        <div class="mx-auto max-w-3xl text-center">
+          <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">The 3-Vertical Growth Ecosystem</h2>
+          <p class="mt-6 text-lg leading-loose text-zinc-400">Three integrated systems working in concert — not three disconnected tools duct-taped together.</p>
+        </div>
+        <div class="mt-20 grid gap-8 md:grid-cols-3 md:gap-6 lg:gap-8">
+          <article class="glass-card group flex flex-col rounded-2xl p-10">
+            <div class="icon-glow mb-8 flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.05] text-accent-light">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" /></svg>
+            </div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-accent-light">The Conversion Engine</p>
+            <h3 class="mt-3 text-xl font-semibold text-white">Premium AI-Powered Websites</h3>
+            <p class="mt-5 flex-1 leading-loose text-zinc-400">Ultra-modern, lightning-fast storefronts that come natively equipped with a custom-trained, 24/7 AI Chat Assistant. It answers customer queries in 3 seconds, qualifies leads, and books meetings while you sleep.</p>
+          </article>
+          <article class="glass-card group flex flex-col rounded-2xl p-10">
+            <div class="icon-glow mb-8 flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.05] text-accent-light">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.281 5.941" /></svg>
+            </div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-accent-light">The Inbound Magnet</p>
+            <h3 class="mt-3 text-xl font-semibold text-white">Meta Ads &amp; Sales Funnels</h3>
+            <p class="mt-5 flex-1 leading-loose text-zinc-400">Stop burning cash on generic ads. We launch targeted Meta campaigns paired with psychological sales funnels built to do one thing: turn cold clicks into high-value booked calls.</p>
+          </article>
+          <article class="glass-card group flex flex-col rounded-2xl p-10">
+            <div class="icon-glow mb-8 flex h-12 w-12 items-center justify-center rounded-xl bg-white/[0.05] text-accent-light">
+              <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 0 1 3.75 3.75v7.5a3.75 3.75 0 0 1-3.75 3.75h-7.5a3.75 3.75 0 0 1-3.75-3.75v-7.5A3.75 3.75 0 0 1 8.25 6h7.5Z" /></svg>
+            </div>
+            <p class="text-xs font-semibold uppercase tracking-widest text-accent-light">The Outbound Hunter</p>
+            <h3 class="mt-3 text-xl font-semibold text-white">Intent-Based Lead Sourcing</h3>
+            <p class="mt-5 flex-1 leading-loose text-zinc-400">Our custom AI software scans social networks and LinkedIn to identify buyers actively posting about problems your business solves, automatically drafting hyper-personalized outreach pitches for your executive review.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="chatbot-demo" class="section-divider border-y py-28 md:py-36">
+      <div class="mx-auto max-w-6xl px-6">
+        <div class="mx-auto max-w-3xl text-center">
+          <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Your Website's Native AI Chat Assistant</h2>
+          <p class="mt-6 text-lg leading-loose text-zinc-400">Every website we build ships with a custom-trained AI chatbot — not a bolt-on widget. It lives inside your conversion engine, knows your offers, and works around the clock.</p>
+          <p class="mt-8 text-sm font-medium text-accent-light">Try the floating chat widget in the bottom-right corner &darr;</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="proof" class="relative overflow-hidden py-28 md:py-36">
+      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_bottom,_rgba(99,102,241,0.1)_0%,_transparent_60%)]" aria-hidden="true"></div>
+      <div class="relative mx-auto max-w-6xl px-6">
+        <div class="mx-auto max-w-4xl text-center">
+          <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">The Unfair Advantage: Driven By Autonomous Systems</h2>
+          <div class="glass-card mx-auto mt-16 space-y-8 rounded-2xl p-10 text-left sm:p-14 sm:text-center">
+            <p class="text-lg leading-loose text-zinc-400">Our clients don't buy fragmented software tools — they buy an integrated growth pipeline. Traffic flows in through precision Meta campaigns. Every visitor lands on a conversion-optimized website with a native AI assistant ready to qualify and book. Meanwhile, our outbound engine identifies high-intent buyers across social networks and drafts personalized outreach before your competitors even know they exist.</p>
+            <p class="text-lg leading-loose text-zinc-400">These three systems don't operate in silos. They communicate flawlessly in the background, 24 hours a day, 7 days a week. Your website feeds data to your ad optimization. Your chatbot surfaces buying signals for outbound. Your outbound engine drives warm traffic back to funnels that already know how to close.</p>
+            <p class="text-lg font-medium leading-loose text-white">This is what an unfair advantage looks like — and it runs while you focus on delivering for the clients it brings you.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact" class="py-28 md:py-40">
+      <div class="mx-auto max-w-6xl px-6">
+        <div class="mx-auto max-w-xl">
+          <div class="text-center">
+            <h2 class="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Identify Your Revenue Gaps</h2>
+            <p class="mt-6 text-lg leading-loose text-zinc-400">Tell us where your bucket is leaking. We'll map your biggest growth bottlenecks and show you exactly how our systems plug them.</p>
+          </div>
+          <form id="altusflow-form" class="glass-card mt-14 space-y-7 rounded-2xl p-10">
+            <div>
+              <label for="name" class="block text-sm font-medium text-zinc-300">Name</label>
+              <input type="text" id="name" name="name" required autocomplete="name" class="input-dark mt-3 block w-full rounded-xl px-4 py-3.5 text-sm" placeholder="Your full name" />
+            </div>
+            <div>
+              <label for="email" class="block text-sm font-medium text-zinc-300">Business Email</label>
+              <input type="email" id="email" name="email" required autocomplete="email" class="input-dark mt-3 block w-full rounded-xl px-4 py-3.5 text-sm" placeholder="you@company.com" />
+            </div>
+            <div>
+              <label for="website" class="block text-sm font-medium text-zinc-300">Company Website</label>
+              <input type="url" id="website" name="website" required autocomplete="url" class="input-dark mt-3 block w-full rounded-xl px-4 py-3.5 text-sm" placeholder="https://yourcompany.com" />
+            </div>
+            <div>
+              <label for="bottleneck" class="block text-sm font-medium text-zinc-300">Your Biggest Growth Bottleneck</label>
+              <select id="bottleneck" name="bottleneck" required class="input-dark mt-3 block w-full rounded-xl px-4 py-3.5 text-sm">
+                <option value="" disabled selected>Select your primary challenge</option>
+                <option value="Conversion Engine">Outdated Website / Missing Chatbot</option>
+                <option value="Inbound Magnet">Low Ad Conversions</option>
+                <option value="Outbound Hunter">Sales Team Wasting Time on Research</option>
+              </select>
+            </div>
+            <div id="form-message" class="hidden rounded-xl p-4 text-sm"></div>
+            <button type="submit" id="form-submit" class="btn-primary w-full rounded-xl px-8 py-4 text-base font-medium text-white">Analyze My Systems</button>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="section-divider border-t py-16">
+    <div class="mx-auto max-w-6xl px-6">
+      <div class="flex flex-col items-center justify-between gap-8 md:flex-row">
+        <p class="text-sm text-zinc-500">&copy; 2026 AltusFlow.ai. All rights reserved.</p>
+        <nav class="flex gap-8" aria-label="Footer navigation">
+          <a href="#verticals" class="nav-link text-sm text-zinc-500 hover:text-zinc-300">Our Systems</a>
+          <a href="#proof" class="nav-link text-sm text-zinc-500 hover:text-zinc-300">The Advantage</a>
+          <a href="#contact" class="nav-link text-sm text-zinc-500 hover:text-zinc-300">Contact</a>
+        </nav>
+      </div>
+    </div>
+  </footer>
+
+  <div id="chat-panel" class="hidden fixed bottom-8 right-8 z-50 flex w-[calc(100vw-2rem)] max-w-md flex-col overflow-hidden rounded-2xl border border-white/[0.08] bg-[#111111]/95 shadow-2xl shadow-black/50 backdrop-blur-xl sm:w-[400px]" role="dialog" aria-label="AI Chat Assistant" aria-modal="true">
+    <div class="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+      <div class="flex items-center gap-3">
+        <div class="flex h-9 w-9 items-center justify-center rounded-full bg-accent/20">
+          <svg class="h-4 w-4 text-accent-light" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" /></svg>
+        </div>
+        <div>
+          <p class="text-sm font-semibold text-white">AltusFlow Assistant</p>
+          <p class="flex items-center gap-1.5 text-xs text-zinc-500"><span class="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span>Online — replies instantly</p>
+        </div>
+      </div>
+      <button id="chat-close" type="button" class="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition hover:bg-white/[0.06] hover:text-white" aria-label="Close chat">
+        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+      </button>
+    </div>
+    <div id="chat-messages" class="flex-1 space-y-4 overflow-y-auto px-4 py-4" style="height: 340px;" aria-live="polite"></div>
+    <div id="chat-quick-actions" class="flex gap-2 overflow-x-auto border-t border-white/[0.04] px-4 py-3"></div>
+    <div class="border-t border-white/[0.06] px-4 py-3">
+      <div class="flex items-end gap-2">
+        <textarea id="chat-input" rows="1" placeholder="Ask about websites, ads, outbound..." class="input-dark max-h-24 min-h-[44px] flex-1 resize-none rounded-xl px-4 py-3 text-sm leading-relaxed" aria-label="Chat message"></textarea>
+        <button id="chat-send" type="button" disabled class="btn-primary flex h-11 w-11 shrink-0 items-center justify-center rounded-xl disabled:opacity-40" aria-label="Send message">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" /></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <button id="chat-toggle" type="button" aria-label="Open AI Chat Assistant" class="chat-widget btn-primary fixed bottom-8 right-8 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white">
+    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M8.625 9.75a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H8.25m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0H12m4.125 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm0 0h-.375m-13.5 3.01c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.184-4.183a1.14 1.14 0 0 1 .778-.332 48.294 48.294 0 0 0 5.83-.498c1.585-.233 2.708-1.626 2.708-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" /></svg>
+  </button>
+
+  <script src="chatbot.js"></script>
+
+  <script>
+    // Form → HubSpot
+    document.getElementById('altusflow-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('form-submit');
+      const msg = document.getElementById('form-message');
+      btn.textContent = 'Submitting...';
+      btn.disabled = true;
+      const data = {
+        email:     document.getElementById('email').value,
+        firstName: document.getElementById('name').value.split(' ')[0],
+        lastName:  document.getElementById('name').value.split(' ').slice(1).join(' '),
+        company:   document.getElementById('website').value,
+        utm: {
+          altusflow_vertical:  document.getElementById('bottleneck').value,
+          altusflow_client_id: 'ALT00',
+        }
+      };
+      try {
+        const res = await fetch('/api/hubspot/contact', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(data) });
+        if (res.ok) {
+          msg.className = 'rounded-xl p-4 text-sm bg-emerald-900/30 text-emerald-400';
+          msg.textContent = "Got it — we'll be in touch within 1 business day.";
+          msg.classList.remove('hidden');
+          e.target.reset();
+        } else {
+          throw new Error('failed');
+        }
+      } catch {
+        msg.className = 'rounded-xl p-4 text-sm bg-red-900/30 text-red-400';
+        msg.textContent = 'Something went wrong. Email us at hello@altusflow.ai';
+        msg.classList.remove('hidden');
+      }
+      btn.textContent = 'Analyze My Systems';
+      btn.disabled = false;
+    });
+  </script>
+
+</body>
+</html>
