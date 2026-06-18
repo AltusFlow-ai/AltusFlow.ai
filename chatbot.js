@@ -349,26 +349,41 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
   }
 
   function pushToHubSpot(email, name) {
-    // HubSpot identify via tracking cookie
+    const qualifiedStatus = chatScore >= 7 ? 'AI-Qualified' : 'Unqualified';
+
+    // Client-side HubSpot identify (cookied sessions)
     const _hsq = (window._hsq = window._hsq || []);
     _hsq.push(['identify', {
       email,
       firstname:                       name || '',
       altusflow_lead_source_vertical:  'Conversion Engine',
       altusflow_client_portal_id:      ALTUSFLOW_CLIENT_ID,
-      altusflow_lead_qualified_status: chatScore >= 7 ? 'AI-Qualified' : 'Unqualified',
+      altusflow_lead_qualified_status: qualifiedStatus,
       altusflow_ai_chat_score:         String(chatScore),
     }]);
     _hsq.push(['trackPageView']);
 
-    // Also fire window.__altusflowCapture if the full integration is wired
-    if (typeof window.__altusflowCapture === 'function') {
-      window.__altusflowCapture({
+    // Server-side backup — resilient against ad blockers (~40% of B2B traffic)
+    const nameParts = (name || '').trim().split(/\s+/);
+    fetch('/api/hubspot/contact', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
         email,
-        firstName: name || '',
-        chatScore,
-        triggerPhrase: '',
-      });
+        firstName: nameParts[0] || '',
+        lastName:  nameParts.slice(1).join(' '),
+        utm: {
+          altusflow_vertical:              'Conversion Engine',
+          altusflow_client_id:             ALTUSFLOW_CLIENT_ID,
+          altusflow_ai_chat_score:         chatScore,
+          altusflow_lead_qualified_status: qualifiedStatus,
+          altusflow_first_touch_campaign:  'AI Chat',
+        },
+      }),
+    }).catch(() => {});
+
+    if (typeof window.__altusflowCapture === 'function') {
+      window.__altusflowCapture({ email, firstName: name || '', chatScore, triggerPhrase: '' });
     }
   }
 
@@ -377,7 +392,7 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
     if (chatScore >= 4) {
       awaitingEmail = true;
       setTimeout(() => {
-        addMessageFn(`Before I go further — what's the best email to send you a personalised systems analysis? I can pull together a tailored breakdown based on what we've discussed.`, 'bot');
+        addMessageFn(`Before I go further — **what's your name and best email?** I'll put together a personalised systems analysis based on what we've discussed.`, 'bot');
       }, 800);
     }
   }
@@ -388,8 +403,14 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
     if (match) {
       capturedEmail = match[0];
       awaitingEmail = false;
+      // Extract name from the text — anything that isn't the email address
+      const nameCandidate = text.replace(emailRegex, '').replace(/[,\s]+/g, ' ').trim();
+      if (nameCandidate && nameCandidate.length > 1 && nameCandidate.length < 60) {
+        capturedName = nameCandidate;
+      }
       pushToHubSpot(capturedEmail, capturedName);
-      addMessageFn(`Got it — I've noted ${capturedEmail}. Our team will follow up with a personalised analysis within 1 business day.\n\nIn the meantime, <a href="#contact" class="chat-cta-link">fill out the full intake form here</a> to speed up your strategy call booking.`, 'bot');
+      const greeting = capturedName ? `Thanks, ${capturedName.split(' ')[0]}!` : 'Got it!';
+      addMessageFn(`${greeting} Our team will follow up at ${capturedEmail} within 1 business day.\n\nIn the meantime, <a href="#contact" class="chat-cta-link">fill out the full intake form here</a> to speed up your strategy call booking.`, 'bot');
       return true;
     }
     return false;
@@ -547,6 +568,22 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
         document.getElementById('chatbot-demo')?.scrollIntoView({ behavior: 'smooth' });
       });
     });
+
+    // Proactive trigger — auto-open after 15s if visitor hasn't engaged (once per session)
+    if (!sessionStorage.getItem('af_chat_triggered')) {
+      setTimeout(() => {
+        if (panel.classList.contains('chat-panel-open')) return;
+        sessionStorage.setItem('af_chat_triggered', '1');
+        openPanel();
+        if (!welcomed) {
+          welcomed = true;
+          setTimeout(() => {
+            addMessage(`Hey 👋 — quick question: **what's your biggest growth bottleneck right now?** Website conversions, ad performance, or finding qualified leads?`, 'bot');
+            renderQuickActions();
+          }, 400);
+        }
+      }, 15000);
+    }
 
     // Load HubSpot tracking pixel
     if (HUBSPOT_PORTAL_ID && !document.getElementById('hs-script')) {
