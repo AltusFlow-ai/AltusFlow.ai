@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AltusFlow — UTM Builder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0a0a0a;
+      --surface:   #111111;
+      --border:    rgba(255,255,255,0.08);
+      --accent:    #1D9E75;
+      --accent-d:  #167a5b;
+      --text:      #e4e4e7;
+      --muted:     #71717a;
+      --error:     #ef4444;
+      --error-bg:  rgba(239,68,68,0.1);
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+      padding: 0 0 60px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    header .logo { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: .06em; }
+    header .logo span { color: var(--accent); }
+    header .tag { font-size: 11px; color: var(--muted); background: rgba(255,255,255,0.05); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
+
+    .container { max-width: 760px; margin: 0 auto; padding: 40px 24px 0; }
+
+    h1 { font-size: 22px; font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .subtitle { color: var(--muted); font-size: 13px; margin-bottom: 36px; }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      color: var(--accent);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .grid.full { grid-template-columns: 1fr; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #a1a1aa;
+      margin-bottom: 6px;
+    }
+
+    select, input[type="text"], input[type="url"] {
+      width: 100%;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color .2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    select { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2371717a' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px; }
+    select option { background: #161616; }
+    select:focus, input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(29,158,117,0.15); }
+
+    .radio-group { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+    .radio-group label {
+      display: flex; align-items: center; gap: 7px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      padding: 8px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 0;
+      transition: border-color .2s, background .2s;
+      user-select: none;
+    }
+    .radio-group input[type="radio"] { accent-color: var(--accent); width: 14px; height: 14px; }
+    .radio-group label:has(input:checked) { border-color: var(--accent); background: rgba(29,158,117,0.08); color: #fff; }
+
+    .output-group { position: relative; margin-bottom: 0; }
+    .output-group + .output-group { margin-top: 16px; }
+    .output-label { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 6px; }
+    .output-box {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 8px;
+      padding: 11px 90px 11px 14px;
+      font-size: 12px;
+      font-family: 'Courier New', monospace;
+      color: #a1a1aa;
+      word-break: break-all;
+      min-height: 42px;
+      line-height: 1.6;
+    }
+    .output-box.has-value { color: var(--text); }
+    .copy-btn {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 5px 12px;
+      font-size: 11px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background .2s, opacity .2s;
+      white-space: nowrap;
+    }
+    .copy-btn:hover { background: var(--accent-d); }
+    .copy-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    .validation-msg {
+      display: none;
+      font-size: 12px;
+      margin-top: 10px;
+      padding: 8px 12px;
+      border-radius: 6px;
+    }
+    .validation-msg.error { display: block; background: var(--error-bg); color: var(--error); border: 1px solid rgba(239,68,68,0.25); }
+    .validation-msg.ok { display: block; background: rgba(29,158,117,0.1); color: var(--accent); border: 1px solid rgba(29,158,117,0.25); }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+    .help-text { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">ALTUS<span>FLOW</span></div>
+  <div class="tag">UTM Builder — Internal Tool</div>
+</header>
+
+<div class="container">
+  <h1>UTM Parameter Builder</h1>
+  <p class="subtitle">Build validated UTM strings that match the AltusFlow taxonomy. All outputs are copy-ready.</p>
+
+  <div class="card">
+    <div class="card-title">Campaign Parameters</div>
+
+    <div class="grid">
+      <!-- Client ID -->
+      <div>
+        <label for="client-id">Client ID</label>
+        <select id="client-id">
+          <option value="">— Select client —</option>
+          <option value="ALT00" selected>ALT00 — AltusFlow (internal)</option>
+          <!-- Add new clients below as you onboard them -->
+          <!-- <option value="CLT01">CLT01 — Client Name</option> -->
+        </select>
+        <p class="help-text">Add new client IDs in the source as you onboard them.</p>
+      </div>
+
+      <!-- Vertical -->
+      <div>
+        <label>Vertical</label>
+        <div class="radio-group">
+          <label><input type="radio" name="vertical" value="CE" /> CE</label>
+          <label><input type="radio" name="vertical" value="IM" /> IM</label>
+          <label><input type="radio" name="vertical" value="OH" checked /> OH</label>
+        </div>
+        <p class="help-text">CE = Conversion Engine · IM = Inbound Magnet · OH = Outbound Hunter</p>
+      </div>
+
+      <!-- Campaign Type -->
+      <div>
+        <label for="campaign-type">Campaign Type</label>
+        <select id="campaign-type">
+          <option value="">— Select type —</option>
+          <option value="TOF">TOF — Top of Funnel</option>
+          <option value="MOF">MOF — Middle of Funnel</option>
+          <option value="BOF">BOF — Bottom of Funnel</option>
+          <option value="RTG">RTG — Retarget</option>
+          <option value="outbound" selected>outbound — Outbound Hunter</option>
+        </select>
+      </div>
+
+      <!-- Audience Tier -->
+      <div>
+        <label for="audience-tier">Audience Tier</label>
+        <select id="audience-tier">
+          <option value="">— Select tier —</option>
+          <option value="COLD">COLD</option>
+          <option value="WARM">WARM</option>
+          <option value="HOT">HOT</option>
+          <option value="LAL">LAL — Lookalike</option>
+        </select>
+      </div>
+
+      <!-- Creative Variant -->
+      <div>
+        <label for="creative">Creative Variant</label>
+        <input type="text" id="creative" placeholder="e.g. VSL-A, IMG-B, pipeline-dried-up" />
+        <p class="help-text">For outbound, use the signal phrase slug (e.g. <code style="color:#1D9E75">pipeline-dried-up</code>).</p>
+      </div>
+
+      <!-- Base URL -->
+      <div>
+        <label for="base-url">Base URL</label>
+        <input type="url" id="base-url" value="https://altusflow.ai" />
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Generated Output</div>
+
+    <div id="validation-msg" class="validation-msg"></div>
+
+    <hr class="divider" />
+
+    <div class="output-group">
+      <div class="output-label">UTM String (campaign value only)</div>
+      <div class="output-box" id="out-utm">—</div>
+      <button class="copy-btn" id="copy-utm" onclick="copyField('out-utm', 'copy-utm')" disabled>Copy</button>
+    </div>
+
+    <div class="output-group" style="margin-top: 16px;">
+      <div class="output-label">Full URL with UTMs</div>
+      <div class="output-box" id="out-url">—</div>
+      <button class="copy-btn" id="copy-url" onclick="copyField('out-url', 'copy-url')" disabled>Copy</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── UTM taxonomy pattern ──────────────────────────────────────────────────
+  // Format: [CLIENT-ID]_[VERTICAL]_[CAMPAIGN-TYPE]_[AUDIENCE-TIER]_[CREATIVE]
+  // Regex validates the utm_campaign value only.
+  const UTM_REGEX = /^[A-Z0-9]+_[A-Z]+_[a-zA-Z0-9]+_[A-Z]+_[A-Za-z0-9-]+$/;
+
+  function getVertical() {
+    const checked = document.querySelector('input[name="vertical"]:checked');
+    return checked ? checked.value : '';
+  }
+
+  function buildUTM() {
+    const clientId   = document.getElementById('client-id').value.trim();
+    const vertical   = getVertical();
+    const campType   = document.getElementById('campaign-type').value.trim();
+    const audTier    = document.getElementById('audience-tier').value.trim();
+    const creative   = document.getElementById('creative').value.trim();
+    const baseUrl    = document.getElementById('base-url').value.trim();
+
+    const validMsg   = document.getElementById('validation-msg');
+    const outUtm     = document.getElementById('out-utm');
+    const outUrl     = document.getElementById('out-url');
+    const copyUtm    = document.getElementById('copy-utm');
+    const copyUrl    = document.getElementById('copy-url');
+
+    const allFilled = clientId && vertical && campType && audTier && creative && baseUrl;
+
+    if (!allFilled) {
+      validMsg.className = 'validation-msg';
+      outUtm.textContent = '—';
+      outUrl.textContent = '—';
+      outUtm.classList.remove('has-value');
+      outUrl.classList.remove('has-value');
+      copyUtm.disabled = true;
+      copyUrl.disabled = true;
+      return;
+    }
+
+    const campaign = `${clientId}_${vertical}_${campType}_${audTier}_${creative}`;
+    const isValid  = UTM_REGEX.test(campaign);
+
+    if (!isValid) {
+      validMsg.className = 'validation-msg error';
+      validMsg.textContent = `Invalid UTM format. Expected: CLIENT_VERTICAL_TYPE_TIER_VARIANT (uppercase, letters/numbers/hyphens only). Got: "${campaign}"`;
+      outUtm.textContent = campaign;
+      outUtm.classList.remove('has-value');
+      outUrl.textContent = '—';
+      outUrl.classList.remove('has-value');
+      copyUtm.disabled = true;
+      copyUrl.disabled = true;
+      return;
+    }
+
+    // Determine utm_source and utm_medium from vertical
+    let source = 'altusflow';
+    let medium = 'organic';
+    if (vertical === 'OH') { source = 'outbound'; medium = 'linkedin'; }
+    if (vertical === 'IM') { source = 'meta';     medium = 'paid-social'; }
+    if (vertical === 'CE') { source = 'website';  medium = 'organic'; }
+
+    const params = new URLSearchParams({
+      utm_source:   source,
+      utm_medium:   medium,
+      utm_campaign: campaign,
+    });
+    const fullUrl = `${baseUrl.replace(/\/$/, '')}/?${params.toString()}`;
+
+    validMsg.className = 'validation-msg ok';
+    validMsg.textContent = `✓ Valid UTM string — matches taxonomy pattern.`;
+
+    outUtm.textContent = campaign;
+    outUtm.classList.add('has-value');
+    outUrl.textContent = fullUrl;
+    outUrl.classList.add('has-value');
+    copyUtm.disabled = false;
+    copyUrl.disabled = false;
+  }
+
+  async function copyField(outputId, btnId) {
+    const text = document.getElementById(outputId).textContent;
+    const btn  = document.getElementById(btnId);
+    if (!text || text === '—') return;
+    try {
+      await navigator.clipboard.writeText(text);
+      const orig = btn.textContent;
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = orig; }, 1500);
+    } catch {
+      prompt('Copy this:', text);
+    }
+  }
+
+  // Wire up all inputs
+  ['client-id', 'campaign-type', 'audience-tier', 'creative', 'base-url'].forEach(id => {
+    document.getElementById(id).addEventListener('input', buildUTM);
+  });
+  document.querySelectorAll('input[name="vertical"]').forEach(r => {
+    r.addEventListener('change', buildUTM);
+  });
+
+  // Initial build
+  buildUTM();
+</script>
+</body>
+</html>
