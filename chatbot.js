@@ -9,6 +9,69 @@
   const HUBSPOT_PORTAL_ID = '246530361';
   const ALTUSFLOW_CLIENT_ID = 'ALT00';
 
+  // ── Niche data ───────────────────────────────────────────────────────────────
+  const NICHE_DATA = {
+    'financial-advisors': {
+      label: 'financial advisors', short: 'advisors',
+      signals: ['"pipeline dried up"', '"struggling to find qualified clients"', '"how do you get new AUM clients"', '"growing my practice"', '"lead gen for financial advisors"'],
+      deal: 'one new AUM client = $5,000–$50,000 in annual fees',
+      examplePost: 'A prospect posted: "Looking for ideas on how to grow my advisory practice beyond referrals. Cold outreach feels off-brand but I need to fill the pipeline."',
+      exampleReply: '"Hi James — saw your post about practice growth. We built a system specifically for advisors that finds prospects already asking about wealth management — and gets your name in front of them before they Google anyone. Worth 15 minutes?"',
+      industry: 'financial advisory',
+      keywords: [/financial advis|wealth manag|\baum\b|advisory practice|financial plann/i],
+    },
+    'business-coaches': {
+      label: 'business coaches', short: 'coaches',
+      signals: ['"struggling to get clients"', '"how do coaches get clients"', '"my calendar is empty"', '"tired of chasing leads"', '"word of mouth not enough"'],
+      deal: 'one new client engagement = $5,000–$50,000',
+      examplePost: 'A prospect posted: "Honest question — how are business coaches actually getting new clients right now? My referral pipeline has dried up and I\'m not sure what to do."',
+      exampleReply: '"Hi Sarah — saw your post about client acquisition. We built a system that finds business owners publicly posting about needing a coach — and gets your outreach to them first. Worth a quick call?"',
+      industry: 'business coaching',
+      keywords: [/business coach|coaching client|coaching business|life coach|executive coach/i],
+    },
+    'recruiters': {
+      label: 'recruiters', short: 'recruiters',
+      signals: ['"struggling to find clients"', '"BD is harder than ever"', '"how do you get retainer clients"', '"pipeline dried up"', '"losing to bigger firms"'],
+      deal: 'one new client contract = $10,000–$100,000/year in placement fees',
+      examplePost: 'A prospect posted: "Business development as a recruiter is brutal right now. Anyone successfully adding new clients in this market? What\'s actually working?"',
+      exampleReply: '"Hi Mike — saw your post about BD. We built a system that scans for companies posting about hiring challenges before they start calling agencies — and gets your message in first. Worth 15 minutes?"',
+      industry: 'recruitment',
+      keywords: [/recruit|staffing|placement fee|talent acquisition|headhunt|executive search/i],
+    },
+    'commercial-real-estate': {
+      label: 'CRE brokers', short: 'CRE',
+      signals: ['"deal flow is slow"', '"struggling to find qualified buyers"', '"how do you generate leads in CRE"', '"market is tough"', '"need more listings"'],
+      deal: 'one closed deal = $50,000–$500,000 in commission',
+      examplePost: 'A prospect posted: "Market has been brutally slow. Anyone doing anything creative for deal flow? I have three solid listings sitting right now."',
+      exampleReply: '"Hi David — saw your post about deal flow. We built a system for CRE professionals that surfaces decision makers posting about slow markets — so you\'re in the conversation before they start making calls. Worth 15 minutes?"',
+      industry: 'commercial real estate',
+      keywords: [/commercial real estate|\bcre\b|deal flow|listings|commercial propert/i],
+    },
+    'msps': {
+      label: 'MSPs', short: 'MSPs',
+      signals: ['"how do MSPs get new clients"', '"struggling with outbound"', '"need to grow beyond referrals"', '"lost another RFP"', '"looking for IT partner"'],
+      deal: 'one new managed services client = $2,000–$10,000/month recurring',
+      examplePost: 'A prospect posted: "Had our server go down for 6 hours yesterday. Current IT support took 4 hours just to call us back. Anyone had luck switching MSPs?"',
+      exampleReply: '"Hi Sarah — saw your post about the server outage. We work with MSPs that want to reach clients like this before they start Googling IT support. Want to see how it works?"',
+      industry: 'managed IT services',
+      keywords: [/\bmsp\b|managed service|it support|it provider|managed it|cybersecurity.*business/i],
+    },
+  };
+
+  function detectNicheFromText(text) {
+    for (const [slug, data] of Object.entries(NICHE_DATA)) {
+      if (data.keywords.some((p) => p.test(text))) return slug;
+    }
+    return null;
+  }
+
+  function setNiche(slug) {
+    if (slug && NICHE_DATA[slug]) {
+      currentNiche = slug;
+      sessionStorage.setItem('altusflow_niche', slug);
+    }
+  }
+
   // ── Quick action buttons ────────────────────────────────────────────────────
   const QUICK_ACTIONS = [
     { label: 'What does AltusFlow do?',   intent: 'overview' },
@@ -18,6 +81,19 @@
     { label: 'Outbound lead sourcing',    intent: 'outbound' },
     { label: 'Book a strategy call',      intent: 'contact' },
   ];
+
+  function getQuickActions() {
+    if (currentNiche && NICHE_DATA[currentNiche]) {
+      const nd = NICHE_DATA[currentNiche];
+      return [
+        { label: `How does this work for ${nd.short}?`, intent: 'niche_how_it_works' },
+        { label: 'What signals do you scan for?',       intent: 'niche_signals' },
+        { label: 'Show me an example',                  intent: 'niche_example' },
+        ...QUICK_ACTIONS,
+      ];
+    }
+    return QUICK_ACTIONS;
+  }
 
   // ── Full response bible ─────────────────────────────────────────────────────
   const RESPONSES = {
@@ -292,8 +368,93 @@ AltusFlow.ai builds **integrated growth engines** — not disconnected tools. Ou
 Could you rephrase, or tap one of the quick buttons below? For a detailed answer tailored to your business, <a href="#contact" class="chat-cta-link">book a free strategy call</a> and our team will map your gaps personally.`,
   };
 
+  // ── Niche-aware dynamic responses ────────────────────────────────────────────
+  const NICHE_RESPONSES = {
+    niche_how_it_works: () => {
+      const nd = currentNiche && NICHE_DATA[currentNiche];
+      if (!nd) return RESPONSES.outbound;
+      return `**How the Outbound Hunter works for ${nd.label}:**
+
+Every morning the system scans LinkedIn, Facebook, and Instagram for ${nd.label} — or their ideal clients — posting pain signals that match what you solve.
+
+**The three steps:**
+
+1. **Scan** — AI searches daily for signal phrases your prospects actually use (see "What signals do you scan for?" for the full list)
+
+2. **Score** — Every result is reviewed for fit. Is this a decision maker? Is the pain real and actionable? Low-confidence results are filtered silently.
+
+3. **Send** — A personalised message is drafted that references their exact post. You review it, click confirm, it goes into HubSpot. Under 2 minutes per lead.
+
+**The economics:** ${nd.deal}.
+
+The system runs every day. It finds people who are already thinking about the problem you solve — and gets your name in front of them first.
+
+Want to see a real example? <a href="#contact" class="chat-cta-link">Or book a 15-minute call →</a>`;
+    },
+
+    niche_results: () => {
+      const nd = currentNiche && NICHE_DATA[currentNiche];
+      if (!nd) return RESPONSES.process;
+      return `**What to expect from the Outbound Hunter for ${nd.label}:**
+
+Results depend on your market size, geography, and how quickly you follow up — but here's the honest picture:
+
+**Week 1–2:** Setup, niche calibration, first batch of signals reviewed and confirmed by you.
+
+**Week 3+:** Daily queue of qualified prospects, personalised messages ready for your approval.
+
+**The key metric isn't volume — it's timing.** You're reaching people at the exact moment they're feeling the pain you solve. That changes the conversation entirely.
+
+**The real ROI math:** ${nd.deal}. The system costs a fraction of that. It runs every day. Every client you close from a signal post is pure return on a fixed investment.
+
+Want to map this to your specific numbers?
+
+<a href="#contact" class="chat-cta-link">→ Book a 30-minute strategy call</a>`;
+    },
+
+    niche_example: () => {
+      const nd = currentNiche && NICHE_DATA[currentNiche];
+      if (!nd) return RESPONSES.lead_sourcing_specialist;
+      return `**Here's what it looks like in practice for ${nd.label}:**
+
+**The signal post we found:**
+${nd.examplePost}
+
+**The message we drafted:**
+${nd.exampleReply}
+
+You review it, edit if needed, click confirm. Under 2 minutes. It goes into HubSpot — lead tracked, touchpoint logged.
+
+**Why this works:** The outreach references their exact post. It's not cold. It's not generic. It shows up when the pain is front of mind.
+
+Want to see this running for your pipeline? <a href="#contact" class="chat-cta-link">Book a discovery call →</a>`;
+    },
+
+    niche_signals: () => {
+      const nd = currentNiche && NICHE_DATA[currentNiche];
+      if (!nd) return RESPONSES.lead_sourcing_specialist;
+      const signalList = nd.signals.map((s) => `• ${s}`).join('\n');
+      return `**The signal phrases we scan for — ${nd.label}:**
+
+${signalList}
+
+The system also catches variations and adjacent language. If someone is publicly expressing the pain you solve — in any form — the scanner is designed to surface it.
+
+**What happens after a signal is found:**
+AI scores the post for fit (decision-maker level, pain specificity, recency) and only surfaces high-confidence results. You never see the noise — just the qualified queue.
+
+Want to see what a full drafted message looks like? Just say "show me an example."
+
+<a href="#contact" class="chat-cta-link">Or book a call to see it live →</a>`;
+    },
+  };
+
   // ── Intent matching ─────────────────────────────────────────────────────────
   const INTENT_PATTERNS = [
+    { intent: 'niche_how_it_works',  patterns: [/how (does|do) (this|it) work for|how.*work.*for (my|us|our)|specific to (my|our) (industry|niche|business)/i] },
+    { intent: 'niche_results',       patterns: [/what (result|outcome|return|roi)|how many leads|how fast|what (can|should) i expect|what.*result/i] },
+    { intent: 'niche_example',       patterns: [/show me (an?|the)?\s*(example|sample)|example (outreach|message|post|pitch)|what does (it look like|a message look like)/i] },
+    { intent: 'niche_signals',       patterns: [/what (signal|trigger|phrase|keyword)|what (do you|does it) scan for|what are you looking for|how do you find (them|prospects|leads)/i] },
     { intent: 'greeting',            patterns: [/^(hi|hello|hey|yo|good\s*(morning|afternoon|evening)|sup)\b/i, /^howdy/i] },
     { intent: 'thanks',              patterns: [/thank/i, /\bthanks\b/i, /appreciate/i, /helpful/i] },
     { intent: 'contact',             patterns: [/book|call|demo|meeting|schedule|talk to|speak with|contact|get started|sign up|strategy|consult/i] },
@@ -323,8 +484,10 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
   }
 
   function getResponse(intentOrText) {
+    if (NICHE_RESPONSES[intentOrText]) return NICHE_RESPONSES[intentOrText]();
     if (RESPONSES[intentOrText]) return RESPONSES[intentOrText];
     const intent = matchIntent(intentOrText);
+    if (intent && NICHE_RESPONSES[intent]) return NICHE_RESPONSES[intent]();
     return RESPONSES[intent] || RESPONSES.fallback;
   }
 
@@ -341,6 +504,7 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
   let capturedName  = null;
   let awaitingEmail = false;
   let chatScore     = 0;
+  let currentNiche  = null;
 
   function incrementScore(intent) {
     const highValue = ['pricing', 'contact', 'process', 'objection_price', 'objection_burned'];
@@ -391,9 +555,11 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
     if (capturedEmail || awaitingEmail) return;
     if (chatScore >= 4) {
       awaitingEmail = true;
-      setTimeout(() => {
-        addMessageFn(`Before I go further — **what's your name and best email?** I'll put together a personalised systems analysis based on what we've discussed.`, 'bot');
-      }, 800);
+      const nd = currentNiche && NICHE_DATA[currentNiche];
+      const ask = nd
+        ? `Before I go further — **what's the best email to send you a breakdown of how this works for ${nd.label} specifically?** (Your name too, so it doesn't land like a newsletter)`
+        : `Before I go further — **what's your name and best email?** I'll put together a personalised systems analysis based on what we've discussed.`;
+      setTimeout(() => { addMessageFn(ask, 'bot'); }, 800);
     }
   }
 
@@ -479,6 +645,12 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
     sendBtn.disabled = true;
     quickActionsEl.innerHTML = '';
 
+    // Update niche from message keywords if not already set
+    if (!currentNiche) {
+      const detected = detectNicheFromText(trimmed);
+      if (detected) setNiche(detected);
+    }
+
     // Check if awaiting email
     if (awaitingEmail) {
       const handled = handleEmailCapture(trimmed, addMessage);
@@ -494,7 +666,7 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
 
   function renderQuickActions() {
     quickActionsEl.innerHTML = '';
-    QUICK_ACTIONS.forEach(({ label, intent }) => {
+    getQuickActions().forEach(({ label, intent }) => {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'chat-quick-btn shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-300 transition hover:border-accent/30 hover:bg-accent/10 hover:text-white';
@@ -539,6 +711,14 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
 
     if (!panel) return;
 
+    // Detect niche: sessionStorage → URL path
+    (function () {
+      const stored = sessionStorage.getItem('altusflow_niche');
+      if (stored && NICHE_DATA[stored]) { currentNiche = stored; return; }
+      const match = window.location.pathname.match(/\/for\/([^/]+)/);
+      if (match && NICHE_DATA[match[1]]) setNiche(match[1]);
+    })();
+
     toggleBtn.addEventListener('click', openPanel);
     closeBtn.addEventListener('click', closePanel);
     sendBtn.addEventListener('click', () => handleUserMessage(inputEl.value));
@@ -577,10 +757,11 @@ Could you rephrase, or tap one of the quick buttons below? For a detailed answer
         openPanel();
         if (!welcomed) {
           welcomed = true;
-          setTimeout(() => {
-            addMessage(`Hey 👋 — quick question: **what's your biggest growth bottleneck right now?** Website conversions, ad performance, or finding qualified leads?`, 'bot');
-            renderQuickActions();
-          }, 400);
+          const nd = currentNiche && NICHE_DATA[currentNiche];
+          const proactiveMsg = nd
+            ? `Hey 👋 — I see you're exploring how AltusFlow works for **${nd.label}**. What would you like to know first?`
+            : `Hey 👋 — quick question: **what's your biggest growth bottleneck right now?** Website conversions, ad performance, or finding qualified leads?`;
+          setTimeout(() => { addMessage(proactiveMsg, 'bot'); renderQuickActions(); }, 400);
         }
       }, 15000);
     }
