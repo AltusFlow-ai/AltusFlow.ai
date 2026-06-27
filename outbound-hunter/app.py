@@ -1026,6 +1026,7 @@ def pre_call_brief(call_id):
 
 @app.route("/dashboard")
 @app.route("/dashboard/<path:path>")
+@login_required
 def dashboard(path=None):
     """Serve the React SPA for all /dashboard/* routes."""
     import flask
