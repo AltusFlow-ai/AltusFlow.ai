@@ -629,12 +629,9 @@ export default function Connections() {
 
   return (
     <div className="content">
-      <div className="demo-label">
-        🔌 CONNECTIONS — {connectedCount}/{PLATFORMS.length} connected
-        {allRequired
-          ? <span style={{ color: 'var(--teal)', marginLeft: 8 }}>✓ Core stack ready</span>
-          : <span style={{ color: 'var(--amber)', marginLeft: 8 }}>⚠ Connect required integrations</span>
-        }
+      <div style={{ fontSize: 12, color: allRequired ? 'var(--teal)' : 'var(--amber)', marginBottom: 16, fontWeight: 600 }}>
+        {connectedCount}/{PLATFORMS.length} connected
+        {allRequired ? ' · ✓ Core stack ready' : ' · Connect required integrations to activate scanning'}
       </div>
 
       {sections.map(section => {

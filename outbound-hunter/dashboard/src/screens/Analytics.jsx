@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import MarketPulseWidget from '../components/MarketPulseWidget.jsx'
 
 export default function Analytics() {
-  const [funnel, setFunnel] = useState({ scraped: 14, qualified: 8, contacted: 8, engaged: 4, booked: 0 })
-  const [metrics, setMetrics] = useState({ total_scraped: 14, qual_rate: 57, avg_speed_h: 3.2, engagement_rate: 25 })
+  const [funnel, setFunnel] = useState({ scraped: 0, qualified: 0, contacted: 0, engaged: 0, booked: 0 })
+  const [metrics, setMetrics] = useState({ total_scraped: 0, qual_rate: 0, avg_speed_h: 0, engagement_rate: 0 })
 
   useEffect(() => {
     fetch('/api/analytics/funnel').then(r => r.ok ? r.json() : null).then(d => { if (d) setFunnel(d) }).catch(() => {})
@@ -11,38 +11,36 @@ export default function Analytics() {
   }, [])
 
   const f = funnel
-  const scraped   = f.scraped   || 14
-  const qualified = f.qualified || 8
-  const contacted = f.contacted || 8
-  const engaged   = f.engaged   || 4
+  const scraped   = f.scraped   || 0
+  const qualified = f.qualified || 0
+  const contacted = f.contacted || 0
+  const engaged   = f.engaged   || 0
   const booked    = f.booked    || 0
 
   function pct(n, d) { return d > 0 ? Math.round((n / d) * 100) : 0 }
 
   return (
     <div className="content">
-      <div className="demo-label">📈 ANALYTICS SCREEN — Funnel + RAG metrics</div>
-
       <div className="stat-grid">
         <div className="stat-card rag-green">
           <div className="stat-label">Total scraped</div>
-          <div className="stat-value">{metrics.total_scraped ?? 14}</div>
-          <div className="stat-delta up">Always green</div>
+          <div className="stat-value">{metrics.total_scraped ?? 0}</div>
+          <div className="stat-delta">—</div>
         </div>
         <div className="stat-card rag-green">
           <div className="stat-label">Qualification rate</div>
-          <div className="stat-value">{metrics.qual_rate ?? 57}%</div>
-          <div className="stat-delta up">↑ Above 30% target</div>
+          <div className="stat-value">{metrics.qual_rate ?? 0}%</div>
+          <div className="stat-delta">Target: 30%+</div>
         </div>
         <div className="stat-card rag-green">
           <div className="stat-label">Speed to touch</div>
-          <div className="stat-value">{metrics.avg_speed_h ?? 3.2}h</div>
-          <div className="stat-delta up">↑ Under 24h target</div>
+          <div className="stat-value">{metrics.avg_speed_h ?? 0}h</div>
+          <div className="stat-delta">Target: under 24h</div>
         </div>
-        <div className="stat-card rag-amber">
+        <div className="stat-card">
           <div className="stat-label">Engagement rate</div>
-          <div className="stat-value">{metrics.engagement_rate ?? 25}%</div>
-          <div className="stat-delta up">↑ Above 15% target</div>
+          <div className="stat-value">{metrics.engagement_rate ?? 0}%</div>
+          <div className="stat-delta">Target: 15%+</div>
         </div>
       </div>
 

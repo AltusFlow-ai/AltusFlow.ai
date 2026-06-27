@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react'
 
 export default function Budget() {
-  const [summary, setSummary]     = useState({ spent_month: 12, revenue_month: 0, roi: null, cac: 0.86 })
-  const [transactions, setTxns]   = useState([
-    { date: 'Jun 21', platform: 'Claude API',  description: '14 prospect drafts · altusflow-own pod', amount: -0.04 },
-    { date: 'Jun 20', platform: 'Claude API',  description: '11 prospect drafts · altusflow-own pod', amount: -0.03 },
-    { date: 'Jun 1',  platform: 'DocuSign',    description: 'Monthly personal plan',                  amount: -10.00 },
-  ])
+  const [summary, setSummary]     = useState({ spent_month: 0, revenue_month: 0, roi: null, cac: 0 })
+  const [transactions, setTxns]   = useState([])
 
   useEffect(() => {
     fetch('/api/budget/summary').then(r => r.ok ? r.json() : null).then(d => { if (d) setSummary(d) }).catch(() => {})
@@ -15,12 +11,10 @@ export default function Budget() {
 
   return (
     <div className="content">
-      <div className="demo-label">💰 BUDGET SCREEN — Every marketing dollar tracked</div>
-
       <div className="stat-grid">
         <div className="stat-card">
           <div className="stat-label">Spent this month</div>
-          <div className="stat-value">${(summary.spent_month ?? 12).toFixed(2)}</div>
+          <div className="stat-value">${(summary.spent_month ?? 0).toFixed(2)}</div>
           <div className="stat-delta">Claude API only</div>
         </div>
         <div className="stat-card">
@@ -35,8 +29,8 @@ export default function Budget() {
         </div>
         <div className="stat-card">
           <div className="stat-label">CAC so far</div>
-          <div className="stat-value">${(summary.cac ?? 0.86).toFixed(2)}</div>
-          <div className="stat-delta up">Very low</div>
+          <div className="stat-value">${(summary.cac ?? 0).toFixed(2)}</div>
+          <div className="stat-delta">—</div>
         </div>
       </div>
 

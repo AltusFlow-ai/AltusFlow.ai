@@ -62,8 +62,8 @@ export default function Calls() {
   const { activeNiche } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
-  const [calls, setCalls] = useState(ALL_CALLS)
-  const [active, setActive] = useState(ALL_CALLS[0])
+  const [calls, setCalls] = useState([])
+  const [active, setActive] = useState(null)
   const [tab, setTab] = useState('summary')
 
   // Auto-select call when navigated from Journey
@@ -146,11 +146,6 @@ export default function Calls() {
 
   return (
     <div className="content">
-      <div className="demo-label">
-        📞 CALLS — Hermes · voice · transcripts · learnings
-        <span style={{ marginLeft: 10, color: 'var(--teal)', fontWeight: 600 }}>🧠 Always learning</span>
-      </div>
-
       <div className="stat-grid" style={{ marginBottom: 14 }}>
         <div className="stat-card rag-green"><div className="stat-label">Calls{activeNiche !== 'all' ? ` · ${activeNiche.toUpperCase()}` : ' this week'}</div><div className="stat-value">{displayed.length}</div></div>
         <div className="stat-card rag-green"><div className="stat-label">Booked</div><div className="stat-value">{booked}</div><div className="stat-delta up">from calls</div></div>

@@ -273,10 +273,6 @@ export default function NicheDelivery() {
 
   return (
     <div style={{ maxWidth: 900, margin: '0 auto' }}>
-      <div className="demo-label" style={{ marginBottom: 20 }}>
-        📦 NICHE DELIVERY — weekly lead packages per pod
-      </div>
-
       {loading ? (
         <div style={{ color: 'var(--text-tertiary)', fontSize: 13, padding: 20 }}>Loading delivery stats…</div>
       ) : (

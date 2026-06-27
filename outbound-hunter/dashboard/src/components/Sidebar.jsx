@@ -207,14 +207,14 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Bottom bar: gear + user */}
+      {/* Bottom bar: user + logout */}
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '10px 14px', borderTop: '1px solid var(--border)',
         flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div className="user-avatar" style={{ width: 28, height: 28, fontSize: 11 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+          <div className="user-avatar" style={{ width: 28, height: 28, fontSize: 11, flexShrink: 0 }}>
             {(user?.company_name || user?.email || 'AU').slice(0, 2).toUpperCase()}
           </div>
           <div style={{ minWidth: 0 }}>
@@ -226,7 +226,12 @@ export default function Sidebar() {
             </div>
           </div>
         </div>
-
+        <a
+          href="/logout"
+          style={{ fontSize: 10, color: 'var(--text-tertiary)', textDecoration: 'none', flexShrink: 0, padding: '3px 6px', borderRadius: 4, border: '1px solid var(--border)' }}
+        >
+          Log out
+        </a>
       </div>
 
     </div>

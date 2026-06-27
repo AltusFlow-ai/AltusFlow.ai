@@ -12,7 +12,7 @@ const PODS = [
 export default function Pods() {
   return (
     <div className="content">
-      <div className="demo-label">⚙️ PODS SCREEN — Admin only — pod factory status</div>
+      
 
       <div className="stat-grid">
         <div className="stat-card"><div className="stat-label">Active pods</div><div className="stat-value">6</div></div>

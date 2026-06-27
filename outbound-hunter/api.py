@@ -179,8 +179,11 @@ def prospects():
 @api.route('/prospects/stats')
 @login_required
 def prospects_stats():
-    from database import get_prospect_stats
-    return jsonify(get_prospect_stats(_uid()) or {})
+    try:
+        from database import get_prospect_stats
+        return jsonify(get_prospect_stats(_uid()) or {})
+    except ImportError:
+        return jsonify({'pending_review': 0, 'unread_conversations': 0})
 
 
 @api.route('/prospects/<int:pid>/approve', methods=['POST'])

@@ -88,8 +88,6 @@ export default function Learning() {
 
   return (
     <div className="content">
-      <div className="demo-label">🧠 LEARNING — What Hermes has learned across {61} interactions</div>
-
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
