@@ -217,16 +217,50 @@ def _matches_signal(submission, signal_phrases):
     return None
 
 
-def _reddit_request(fn, run_id, context, max_retries=3):
+# Reddit OAuth limit: 100 requests/minute.
+# We target 40% utilisation → 40 req/min → 1.5s minimum between requests.
+_RATE_FLOOR    = 1.5   # minimum seconds between any two API calls
+_RATE_SAFE_PCT = 0.40  # stay at ≤40% of the 100 req/min budget
+
+
+def _throttle(reddit):
     """
-    Call fn() and return its result. On a 429 / RateLimitExceeded, waits
-    the time Reddit requests (or 60s fallback) then retries up to max_retries.
+    Sleep just long enough to stay within Reddit's rate limit.
+    Uses live X-Ratelimit-* header values that PRAW reads after every response.
+    Falls back to _RATE_FLOOR if the info isn't available yet.
+    """
+    try:
+        limits    = reddit.auth.limits          # {'remaining': N, 'reset_timestamp': ts, 'used': N}
+        remaining = limits.get('remaining') or 100
+        reset_ts  = limits.get('reset_timestamp') or (time.time() + 60)
+        secs_left = max(1.0, reset_ts - time.time())
+
+        if remaining <= 2:
+            # Bucket nearly empty — wait out the reset window
+            wait = secs_left + 1
+        else:
+            # Space remaining requests evenly across the window, stay at ≤40% utilisation
+            per_request = secs_left / remaining
+            wait = max(_RATE_FLOOR, per_request / _RATE_SAFE_PCT)
+
+        time.sleep(wait)
+    except Exception:
+        time.sleep(_RATE_FLOOR)
+
+
+def _reddit_request(fn, reddit, run_id, context, max_retries=3):
+    """
+    Call fn(), throttle afterwards, and retry on 429.
     Returns None on permanent failure.
     """
     from error_logger import log_pipeline_error, WARNING
+    import re as _re
+
     for attempt in range(max_retries):
         try:
-            return fn()
+            result = fn()
+            _throttle(reddit)
+            return result
         except Exception as e:
             err_str = str(e).lower()
             is_rate_limit = (
@@ -236,23 +270,17 @@ def _reddit_request(fn, run_id, context, max_retries=3):
                 or 'too many requests' in err_str
             )
             if is_rate_limit:
-                # Try to honour Reddit's Retry-After header value
-                wait = 60
-                try:
-                    import re as _re
-                    m = _re.search(r'(\d+)\s*second', err_str)
-                    if m:
-                        wait = int(m.group(1)) + 5
-                except Exception:
-                    pass
+                m = _re.search(r'(\d+)\s*second', err_str)
+                wait = int(m.group(1)) + 5 if m else 65
                 log_pipeline_error(
                     run_id, "reddit_scraper",
-                    f"429 rate limit on {context} — waiting {wait}s then retrying (attempt {attempt + 1}/{max_retries}).",
+                    f"429 on {context} — waiting {wait}s, retry {attempt + 1}/{max_retries}.",
                     WARNING,
                 )
                 time.sleep(wait)
             else:
-                log_pipeline_error(run_id, "reddit_scraper", f"Error on {context}: {type(e).__name__}: {e}", WARNING)
+                log_pipeline_error(run_id, "reddit_scraper",
+                                   f"Error on {context}: {type(e).__name__}: {e}", WARNING)
                 return None
     return None
 
@@ -278,7 +306,7 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
             def _do_search(p=phrase):
                 return list(sub.search(p, limit=MAX_POSTS_PER_SEARCH, sort="new"))
 
-            posts = _reddit_request(_do_search, run_id, f"r/{subreddit_name} search '{phrase}'")
+            posts = _reddit_request(_do_search, reddit, run_id, f"r/{subreddit_name} search '{phrase}'")
             if posts:
                 for post in posts:
                     if post.id in seen_ids:
@@ -292,7 +320,6 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
                     p['_reddit_icp_boost'] = boost
                     p['_reddit_boost_notes'] = boost_notes
                     results.append(p)
-            time.sleep(5)  # 5s between phrase searches
 
         # ── Hot + New posts filtered for signal phrases ───────────────────────
         for feed_name in ('hot', 'new'):
@@ -300,7 +327,7 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
                 feed = sub.hot(limit=MAX_HOT_POSTS) if fn == 'hot' else sub.new(limit=MAX_HOT_POSTS)
                 return list(feed)
 
-            posts = _reddit_request(_do_feed, run_id, f"r/{subreddit_name} {feed_name}")
+            posts = _reddit_request(_do_feed, reddit, run_id, f"r/{subreddit_name} {feed_name}")
             if posts:
                 for post in posts:
                     if post.id in seen_ids:
@@ -314,7 +341,6 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
                     p['_reddit_icp_boost'] = boost
                     p['_reddit_boost_notes'] = boost_notes
                     results.append(p)
-            time.sleep(5)  # 5s between hot/new feed requests
 
     except Exception as e:
         log_pipeline_error(
@@ -373,7 +399,7 @@ def run_niche_search(niche_slug, run_id=None):
                 seen_handles.add(key)
                 all_results.append(p)
         if i < len(subreddits) - 1:
-            time.sleep(8)  # 8s between subreddits to avoid rate limits
+            _throttle(reddit)  # pace between subreddits using live rate limit state
 
     print(f"[Reddit] [{niche_slug}] Total unique: {len(all_results)}")
     return all_results
