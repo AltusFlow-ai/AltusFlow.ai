@@ -408,12 +408,19 @@ def _worker(subreddits: list, min_icp: int, client_id: str):
     No PRAW, no API app, no phone verification — works on any Reddit account or none.
     Tracks seen post IDs so nothing is processed twice.
     """
-    poll_interval = 60  # seconds between sweeps of each subreddit
+    poll_interval = 90   # seconds per full sweep across all subreddits
     seen          = set()
+
+    # Space each subreddit evenly across the sweep window so requests
+    # are never fired in a burst. Minimum 10s between any two requests.
+    per_sub_delay = max(10, poll_interval // max(len(subreddits), 1))
 
     _upd(running=True, started_at=datetime.now(timezone.utc).isoformat(),
          subreddits=subreddits, last_error=None)
-    log.info(f"[stream] Polling {len(subreddits)} subreddits every {poll_interval}s — no API key needed")
+    log.info(
+        f"[stream] Polling {len(subreddits)} subreddits, "
+        f"{per_sub_delay}s between each ({poll_interval}s cycle) — no API key needed"
+    )
 
     # Prime seen set so we don't re-process posts that existed before startup
     for sub in subreddits:
@@ -424,6 +431,11 @@ def _worker(subreddits: list, min_icp: int, client_id: str):
                 seen.add(post.get('name', ''))
         except Exception:
             pass
+        # Space out priming requests too
+        for _ in range(per_sub_delay):
+            if _stop_event.is_set():
+                break
+            time.sleep(1)
     log.info(f"[stream] Primed with {len(seen)} existing posts — watching for new ones")
 
     while not _stop_event.is_set():
@@ -451,11 +463,11 @@ def _worker(subreddits: list, min_icp: int, client_id: str):
                 _upd(last_error=str(exc))
                 log.warning(f"[stream] poll error r/{sub}: {exc}")
 
-        # Wait between full sweeps — check stop event every second
-        for _ in range(poll_interval):
-            if _stop_event.is_set():
-                break
-            time.sleep(1)
+            # Wait between subreddits — check stop event every second
+            for _ in range(per_sub_delay):
+                if _stop_event.is_set():
+                    break
+                time.sleep(1)
 
     _upd(running=False)
     log.info("[stream] stopped cleanly")
