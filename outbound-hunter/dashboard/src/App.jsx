@@ -42,9 +42,15 @@ export default function App() {
 
   useEffect(() => {
     fetch('/api/me')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => setUser(d))
-      .catch(() => setUser(null))
+      .then(r => {
+        if (r.status === 401 || r.redirected) {
+          window.location.href = '/login'
+          return null
+        }
+        return r.ok ? r.json() : null
+      })
+      .then(d => { if (d) setUser(d) })
+      .catch(() => { window.location.href = '/login' })
   }, [])
 
   const toggleHermesCalls = useCallback((val) => {

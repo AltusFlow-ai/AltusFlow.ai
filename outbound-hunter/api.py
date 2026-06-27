@@ -79,8 +79,10 @@ def _uid():
 
 
 @api.route('/me')
-@login_required
 def me():
+    from flask_login import current_user as _cu
+    if not _cu.is_authenticated:
+        return jsonify({'error': 'not authenticated'}), 401
     return jsonify({
         'id':           current_user.id,
         'email':        current_user.email,
