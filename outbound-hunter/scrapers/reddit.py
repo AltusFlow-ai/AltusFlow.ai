@@ -217,6 +217,46 @@ def _matches_signal(submission, signal_phrases):
     return None
 
 
+def _reddit_request(fn, run_id, context, max_retries=3):
+    """
+    Call fn() and return its result. On a 429 / RateLimitExceeded, waits
+    the time Reddit requests (or 60s fallback) then retries up to max_retries.
+    Returns None on permanent failure.
+    """
+    from error_logger import log_pipeline_error, WARNING
+    for attempt in range(max_retries):
+        try:
+            return fn()
+        except Exception as e:
+            err_str = str(e).lower()
+            is_rate_limit = (
+                '429' in err_str
+                or 'ratelimit' in err_str
+                or 'rate limit' in err_str
+                or 'too many requests' in err_str
+            )
+            if is_rate_limit:
+                # Try to honour Reddit's Retry-After header value
+                wait = 60
+                try:
+                    import re as _re
+                    m = _re.search(r'(\d+)\s*second', err_str)
+                    if m:
+                        wait = int(m.group(1)) + 5
+                except Exception:
+                    pass
+                log_pipeline_error(
+                    run_id, "reddit_scraper",
+                    f"429 rate limit on {context} — waiting {wait}s then retrying (attempt {attempt + 1}/{max_retries}).",
+                    WARNING,
+                )
+                time.sleep(wait)
+            else:
+                log_pipeline_error(run_id, "reddit_scraper", f"Error on {context}: {type(e).__name__}: {e}", WARNING)
+                return None
+    return None
+
+
 def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=None):
     """
     Scan one subreddit:
@@ -234,9 +274,13 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
         sub = reddit.subreddit(subreddit_name)
 
         # ── Signal phrase search ──────────────────────────────────────────────
-        for phrase in signal_phrases:  # scan all phrases — daily scan budget is fine
-            try:
-                for post in sub.search(phrase, limit=MAX_POSTS_PER_SEARCH, sort="new"):
+        for phrase in signal_phrases:
+            def _do_search(p=phrase):
+                return list(sub.search(p, limit=MAX_POSTS_PER_SEARCH, sort="new"))
+
+            posts = _reddit_request(_do_search, run_id, f"r/{subreddit_name} search '{phrase}'")
+            if posts:
+                for post in posts:
                     if post.id in seen_ids:
                         continue
                     seen_ids.add(post.id)
@@ -248,18 +292,17 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
                     p['_reddit_icp_boost'] = boost
                     p['_reddit_boost_notes'] = boost_notes
                     results.append(p)
-                time.sleep(2)  # 2s between phrase searches to stay within 60 req/min
-            except Exception as e:
-                log_pipeline_error(
-                    run_id, "reddit_scraper",
-                    f"Search error in r/{subreddit_name} for '{phrase}': {type(e).__name__}: {e}",
-                    WARNING,
-                )
+            time.sleep(5)  # 5s between phrase searches
 
         # ── Hot + New posts filtered for signal phrases ───────────────────────
-        for feed in (sub.hot(limit=MAX_HOT_POSTS), sub.new(limit=MAX_HOT_POSTS)):
-            try:
-                for post in feed:
+        for feed_name in ('hot', 'new'):
+            def _do_feed(fn=feed_name):
+                feed = sub.hot(limit=MAX_HOT_POSTS) if fn == 'hot' else sub.new(limit=MAX_HOT_POSTS)
+                return list(feed)
+
+            posts = _reddit_request(_do_feed, run_id, f"r/{subreddit_name} {feed_name}")
+            if posts:
+                for post in posts:
                     if post.id in seen_ids:
                         continue
                     matched = _matches_signal(post, signal_phrases)
@@ -271,13 +314,7 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
                     p['_reddit_icp_boost'] = boost
                     p['_reddit_boost_notes'] = boost_notes
                     results.append(p)
-                time.sleep(2)  # 2s between hot/new feed requests
-            except Exception as e:
-                log_pipeline_error(
-                    run_id, "reddit_scraper",
-                    f"Feed scan error in r/{subreddit_name}: {type(e).__name__}: {e}",
-                    WARNING,
-                )
+            time.sleep(5)  # 5s between hot/new feed requests
 
     except Exception as e:
         log_pipeline_error(
@@ -336,7 +373,7 @@ def run_niche_search(niche_slug, run_id=None):
                 seen_handles.add(key)
                 all_results.append(p)
         if i < len(subreddits) - 1:
-            time.sleep(3)  # 3s between subreddits to avoid rate limits
+            time.sleep(8)  # 8s between subreddits to avoid rate limits
 
     print(f"[Reddit] [{niche_slug}] Total unique: {len(all_results)}")
     return all_results
