@@ -230,6 +230,11 @@ def _ctx():
 
 @app.route("/")
 def index():
+    return redirect("/dashboard")
+
+
+@app.route("/legacy")
+def legacy_index():
     niche    = request.args.get("niche") or None
     pending  = get_pending(niche=niche)
     stats    = get_stats()
