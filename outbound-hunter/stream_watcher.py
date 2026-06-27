@@ -252,68 +252,52 @@ def _draft_mod_intro(subreddit: str, niche: str) -> str:
         return f"Hi mods — we'd love to occasionally share resources for people asking about trading in r/{subreddit}. Let us know if that's OK!"
 
 
-# ── Fetch posts via public Reddit JSON API (no credentials needed) ────────────
+def _get_reddit_client():
+    """Return an authenticated PRAW client, or None if credentials are missing."""
+    client_id     = os.environ.get('REDDIT_CLIENT_ID', '').strip()
+    client_secret = os.environ.get('REDDIT_CLIENT_SECRET', '').strip()
+    username      = os.environ.get('REDDIT_USERNAME', '').strip()
+    password      = os.environ.get('REDDIT_PASSWORD', '').strip()
+    user_agent    = os.environ.get('REDDIT_USER_AGENT', 'AltusFlowHunter/1.0')
 
-def _fetch_new_posts(subreddit: str) -> list:
+    if not (client_id and client_secret):
+        return None
+    try:
+        import praw
+        if username and password:
+            return praw.Reddit(
+                client_id=client_id, client_secret=client_secret,
+                username=username, password=password, user_agent=user_agent,
+            )
+        return praw.Reddit(
+            client_id=client_id, client_secret=client_secret, user_agent=user_agent,
+        )
+    except Exception as e:
+        log.warning(f"[stream] PRAW init failed: {e}")
+        return None
+
+
+def _fetch_new_posts(subreddit: str, reddit) -> list:
     """
-    Pull newest posts via Reddit's public RSS feed — designed for public consumption,
-    no API key or app registration needed. Falls back to empty list on error.
-    Returns list of dicts matching the same shape _process() expects.
+    Fetch newest posts via authenticated PRAW. Returns list of dicts.
+    Uses Reddit's official API — 100 req/min limit, no IP blocks.
     """
-    import urllib.request as _ur
-    import xml.etree.ElementTree as ET
-
-    url = f"https://www.reddit.com/r/{subreddit}/new/.rss?limit=25"
-    req = _ur.Request(url, headers={
-        'User-Agent': 'Mozilla/5.0 (compatible; AltusFlow/1.0; RSS reader)',
-        'Accept':     'application/rss+xml, application/xml, text/xml',
-    })
-    with _ur.urlopen(req, timeout=12) as resp:
-        xml_bytes = resp.read()
-
-    root = ET.fromstring(xml_bytes)
-    ns   = {'atom': 'http://www.w3.org/2005/Atom'}
     posts = []
-
-    for entry in root.findall('atom:entry', ns) or root.findall('.//item'):
-        try:
-            # Atom feed (reddit standard)
-            if entry.tag.endswith('entry'):
-                link      = entry.find('atom:link', ns)
-                permalink = link.get('href', '') if link is not None else ''
-                title     = (entry.findtext('atom:title', '', ns) or '').strip()
-                content   = (entry.findtext('{http://www.w3.org/2005/Atom}content', '')
-                             or entry.findtext('atom:summary', '', ns) or '').strip()
-                author_el = entry.find('{http://www.w3.org/2005/Atom}author')
-                author    = author_el.findtext('{http://www.w3.org/2005/Atom}name', '') if author_el is not None else ''
-                author    = author.replace('/u/', '').strip()
-                post_id   = (entry.findtext('atom:id', '', ns) or permalink).split('/')[-2] or permalink
-            else:
-                # RSS 2.0 fallback
-                permalink = entry.findtext('link', '') or ''
-                title     = (entry.findtext('title') or '').strip()
-                content   = (entry.findtext('description') or '').strip()
-                author    = (entry.findtext('{http://purl.org/dc/elements/1.1/}creator') or '').strip()
-                post_id   = permalink
-
-            # Strip HTML tags from content
-            import re
-            body = re.sub(r'<[^>]+>', '', content).strip()[:2000]
-
+    try:
+        for submission in reddit.subreddit(subreddit).new(limit=25):
             posts.append({
-                'name':        f"t3_{post_id}",
-                'id':           post_id,
-                'title':        title,
-                'selftext':     body,
-                'author':       author or '[deleted]',
-                'subreddit':    subreddit,
-                'permalink':    permalink.replace('https://www.reddit.com', '') if 'reddit.com' in permalink else permalink,
-                'created_utc':  time.time(),
-                'url':          permalink,
+                'name':        submission.name,
+                'id':          submission.id,
+                'title':       submission.title or '',
+                'selftext':    submission.selftext or '',
+                'author':      str(submission.author) if submission.author else '[deleted]',
+                'subreddit':   subreddit,
+                'permalink':   submission.permalink,
+                'created_utc': submission.created_utc,
+                'url':         f"https://reddit.com{submission.permalink}",
             })
-        except Exception:
-            continue
-
+    except Exception as e:
+        raise e
     return posts
 
 
@@ -404,34 +388,34 @@ def _process(post: dict, min_icp: int, client_id: str):
 
 def _worker(subreddits: list, min_icp: int, client_id: str):
     """
-    Polls Reddit's public /new.json endpoint every 60 seconds per subreddit.
-    No PRAW, no API app, no phone verification — works on any Reddit account or none.
-    Tracks seen post IDs so nothing is processed twice.
+    Polls Reddit via authenticated PRAW every 5 minutes per subreddit.
+    Requires REDDIT_CLIENT_ID + REDDIT_CLIENT_SECRET — will not start without them.
     """
-    poll_interval = 90   # seconds per full sweep across all subreddits
-    seen          = set()
+    reddit = _get_reddit_client()
+    if not reddit:
+        log.warning("[stream] Reddit credentials not set — stream watcher disabled.")
+        _upd(running=False)
+        return
 
-    # Space each subreddit evenly across the sweep window so requests
-    # are never fired in a burst. Minimum 10s between any two requests.
-    per_sub_delay = max(10, poll_interval // max(len(subreddits), 1))
+    # Poll each subreddit once every 5 minutes, spaced 30s apart
+    per_sub_delay = 30   # seconds between each subreddit request
+    cycle_seconds = max(300, per_sub_delay * len(subreddits))
+    seen = set()
 
     _upd(running=True, started_at=datetime.now(timezone.utc).isoformat(),
          subreddits=subreddits, last_error=None)
-    log.info(
-        f"[stream] Polling {len(subreddits)} subreddits, "
-        f"{per_sub_delay}s between each ({poll_interval}s cycle) — no API key needed"
-    )
+    log.info(f"[stream] Polling {len(subreddits)} subreddits via PRAW, "
+             f"{per_sub_delay}s apart, ~{cycle_seconds}s cycle")
 
-    # Prime seen set so we don't re-process posts that existed before startup
+    # Prime seen set — don't re-process posts that existed before startup
     for sub in subreddits:
         if _stop_event.is_set():
             break
         try:
-            for post in _fetch_new_posts(sub):
+            for post in _fetch_new_posts(sub, reddit):
                 seen.add(post.get('name', ''))
         except Exception:
             pass
-        # Space out priming requests too
         for _ in range(per_sub_delay):
             if _stop_event.is_set():
                 break
@@ -439,35 +423,41 @@ def _worker(subreddits: list, min_icp: int, client_id: str):
     log.info(f"[stream] Primed with {len(seen)} existing posts — watching for new ones")
 
     while not _stop_event.is_set():
+        sweep_start = time.time()
+
         for sub in subreddits:
             if _stop_event.is_set():
                 break
             try:
-                posts = _fetch_new_posts(sub)
+                posts = _fetch_new_posts(sub, reddit)
                 for post in posts:
                     name = post.get('name', '')
                     if not name or name in seen:
                         continue
                     seen.add(name)
-
                     with _status_lock:
                         _status['posts_seen'] += 1
                         _status['last_post_at'] = datetime.now(timezone.utc).isoformat()
-
                     try:
                         _process(post, min_icp, client_id)
                     except Exception as exc:
                         log.warning(f"[stream] _process error for r/{sub}: {exc}")
-
             except Exception as exc:
                 _upd(last_error=str(exc))
                 log.warning(f"[stream] poll error r/{sub}: {exc}")
 
-            # Wait between subreddits — check stop event every second
             for _ in range(per_sub_delay):
                 if _stop_event.is_set():
                     break
                 time.sleep(1)
+
+        # Sleep out the remainder of the cycle
+        elapsed  = time.time() - sweep_start
+        leftover = max(0, cycle_seconds - elapsed)
+        for _ in range(int(leftover)):
+            if _stop_event.is_set():
+                break
+            time.sleep(1)
 
     _upd(running=False)
     log.info("[stream] stopped cleanly")
