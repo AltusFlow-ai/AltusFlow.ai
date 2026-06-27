@@ -48,6 +48,14 @@ const PLATFORMS = [
     docsUrl: 'https://discord.com/developers/applications', required: false,
     badge: 'Channel Scanner',
   },
+  {
+    id: 'apify', section: 'signals',
+    name: 'Apify', sub: 'Reddit, LinkedIn, Facebook Groups scraping — swap in when ready to scale',
+    logo: { type: 'letter', letter: 'A', bg: '#FF6B35', color: '#fff' },
+    field: 'API Token', placeholder: 'apify_api_...',
+    docsUrl: 'https://console.apify.com/account/integrations', required: false,
+    badge: 'Scale',
+  },
   // ── CRM — Pipeline Sync ──────────────────────────────────────────────────
   {
     id: 'hubspot', section: 'crm', crm: true,

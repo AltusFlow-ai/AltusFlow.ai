@@ -1192,6 +1192,7 @@ def connections():
         'reddit':        has('REDDIT_CLIENT_ID'),
         'twitter':       has('TWITTER_BEARER_TOKEN'),
         'discord':       has('DISCORD_BOT_TOKEN'),
+        'apify':         has('APIFY_API_TOKEN'),
         'hubspot':       has('HUBSPOT_TOKEN'),
         'pipedrive':     has('PIPEDRIVE_API_TOKEN'),
         'gohighlevel':   has('GHL_API_KEY'),
@@ -1223,6 +1224,7 @@ _PLATFORM_ENV_VARS = {
     'openai':       'OPENAI_API_KEY',
     'deepgram':     'DEEPGRAM_API_KEY',
     'discord':      'DISCORD_BOT_TOKEN',
+    'apify':        'APIFY_API_TOKEN',
     'twilio':       'TWILIO_ACCOUNT_SID',   # primary check key; multi-key save handled below
 }
 
