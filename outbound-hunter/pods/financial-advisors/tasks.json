@@ -1,0 +1,59 @@
+{
+  "pod_slug": "financial-advisors",
+  "tasks": [
+    {
+      "id": "daily_scan",
+      "name": "Daily prospect scan — Financial Advisors",
+      "schedule": "0 8 * * 1-5",
+      "description": "Scan LinkedIn, Facebook groups, and Reddit for independent financial advisors posting pain signals about client acquisition, referral pipeline, or AUM growth plateau",
+      "acceptance_criteria": [
+        "At least 1 platform scanned successfully",
+        "All results pass pre_flight_check (DNC, consent, cooldown, fields)",
+        "No PII transmitted without SHA-256 hashing",
+        "All HubSpot/Meta/Calendly calls routed through EventDispatcher only",
+        "Status report written to orchestrator within 60 seconds of completion",
+        "scan_runs row marked complete with found/qualified/stored counts",
+        "Wire house advisors (Merrill, Morgan Stanley, UBS, Edward Jones, Raymond James) excluded from results",
+        "No prospect with icp_score < MIN_ICP_SCORE (default 4) stored as qualified"
+      ],
+      "on_failure": "alert_admin",
+      "max_retries": 2,
+      "retry_delay_minutes": 30,
+      "circuit_breaker_threshold": 3
+    },
+    {
+      "id": "calendly_poll",
+      "name": "Calendly booking poll",
+      "schedule": "*/15 * * * *",
+      "description": "Poll Calendly for new bookings from financial advisor prospects and update HubSpot deal stages",
+      "acceptance_criteria": [
+        "New bookings matched to prospects within 15 minutes",
+        "HubSpot deal stage updated via EventDispatcher only",
+        "Pre-call brief generated for every new booking (includes advisor niche context, AUM signals, pain points from post)",
+        "No booking processed twice (event_id dedup enforced via dispatched_events table)"
+      ],
+      "on_failure": "log_warning",
+      "max_retries": 3,
+      "retry_delay_minutes": 5
+    }
+  ],
+  "global_limits": {
+    "max_prospects_per_run": 50,
+    "max_apify_calls_per_hour": 10,
+    "max_claude_calls_per_run": 100,
+    "min_icp_score": 4,
+    "cooldown_days": 90
+  },
+  "niche_signal_phrases": [
+    "struggling to get new clients",
+    "referrals have dried up",
+    "how do you grow your AUM",
+    "not getting enough leads",
+    "prospecting as an advisor",
+    "growing an independent practice",
+    "client acquisition for advisors",
+    "building a book of business",
+    "independent RIA growth",
+    "fee-only advisor marketing"
+  ]
+}

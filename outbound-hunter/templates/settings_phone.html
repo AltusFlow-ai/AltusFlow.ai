@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Phone Settings — AltusFlow{% endblock %}
+{% block content %}
+
+{% if brief_mode and call %}
+<!-- ── PRE-CALL BRIEF ─────────────────────────────────────────────────────── -->
+<div class="max-w-2xl mx-auto py-10 px-4">
+  <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+    <p class="text-xs font-semibold uppercase tracking-widest text-indigo-400 mb-2">Pre-Call Brief</p>
+    <h1 class="text-2xl font-semibold text-white mb-6">
+      {{ call.outcome | title if call.outcome else 'Inbound Call' }}
+    </h1>
+
+    <dl class="space-y-4 text-sm">
+      <div class="flex gap-3">
+        <dt class="w-36 shrink-0 text-zinc-500">Call ID</dt>
+        <dd class="text-zinc-300 font-mono text-xs">{{ call.call_id or '—' }}</dd>
+      </div>
+      <div class="flex gap-3">
+        <dt class="w-36 shrink-0 text-zinc-500">Received</dt>
+        <dd class="text-zinc-300">{{ call.created_at or '—' }}</dd>
+      </div>
+      <div class="flex gap-3">
+        <dt class="w-36 shrink-0 text-zinc-500">Duration</dt>
+        <dd class="text-zinc-300">{{ call.duration_seconds }}s</dd>
+      </div>
+      <div class="flex gap-3">
+        <dt class="w-36 shrink-0 text-zinc-500">Booking confirmed</dt>
+        <dd class="{% if call.booking_confirmed %}text-emerald-400{% else %}text-zinc-400{% endif %}">
+          {{ 'Yes' if call.booking_confirmed else 'No' }}
+        </dd>
+      </div>
+      {% if call.escalation_reason %}
+      <div class="flex gap-3">
+        <dt class="w-36 shrink-0 text-zinc-500">Escalation</dt>
+        <dd class="text-amber-400">{{ call.escalation_reason }}</dd>
+      </div>
+      {% endif %}
+    </dl>
+
+    {% if call.summary %}
+    <div class="mt-8">
+      <p class="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-2">Morgan's Summary</p>
+      <p class="text-zinc-300 leading-relaxed">{{ call.summary }}</p>
+    </div>
+    {% endif %}
+
+    {% if call.transcript %}
+    <div class="mt-8">
+      <p class="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-2">Transcript</p>
+      <pre class="text-xs text-zinc-400 whitespace-pre-wrap leading-relaxed bg-black/30 rounded-xl p-5">{{ call.transcript }}</pre>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+<!-- ── SETTINGS PAGE ──────────────────────────────────────────────────────── -->
+<div class="max-w-3xl mx-auto py-10 px-4 space-y-8">
+
+  <div>
+    <h1 class="text-2xl font-semibold text-white">Phone Settings</h1>
+    <p class="mt-1 text-sm text-zinc-400">Configure Morgan, your inbound AI receptionist, and closer notifications.</p>
+  </div>
+
+  <!-- Status bar -->
+  <div class="grid grid-cols-2 gap-4 sm:grid-cols-3">
+    <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+      <p class="text-xs text-zinc-500 mb-1">Vapi</p>
+      <p class="text-sm font-medium {% if settings.vapi_connected %}text-emerald-400{% else %}text-amber-400{% endif %}">
+        {{ 'Connected' if settings.vapi_connected else 'API key missing' }}
+      </p>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+      <p class="text-xs text-zinc-500 mb-1">Inbound number</p>
+      <p class="text-sm font-medium text-zinc-300">{{ settings.twilio_number or 'Not set' }}</p>
+    </div>
+    <div class="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+      <p class="text-xs text-zinc-500 mb-1">Morgan</p>
+      <p class="text-sm font-medium {% if settings.vapi_connected %}text-emerald-400{% else %}text-zinc-400{% endif %}">
+        {{ 'Active' if settings.vapi_connected else 'Inactive' }}
+      </p>
+    </div>
+  </div>
+
+  {% if saved %}
+  <div class="rounded-xl border border-emerald-500/30 bg-emerald-950/40 px-5 py-3 text-sm text-emerald-300">
+    Settings saved.
+  </div>
+  {% endif %}
+
+  <!-- Closer notification settings -->
+  <form method="POST" action="/settings/phone" class="rounded-2xl border border-white/10 bg-white/[0.03] p-8 space-y-6">
+    <div>
+      <h2 class="text-base font-semibold text-white">Closer Notification Settings</h2>
+      <p class="mt-1 text-sm text-zinc-400">When Morgan books a call or escalates, your closer gets notified immediately.</p>
+    </div>
+
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium text-zinc-300 mb-1.5">Closer name</label>
+        <input type="text" name="closer_name" value="{{ settings.closer_name }}"
+               placeholder="e.g. Austin"
+               class="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none">
+        <p class="mt-1 text-xs text-zinc-500">Used in HubSpot task assignment and notification subject line.</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-zinc-300 mb-1.5">Closer webhook URL</label>
+        <input type="url" name="closer_webhook_url" value="{{ settings.closer_webhook_url }}"
+               placeholder="https://hooks.slack.com/... or https://hook.make.com/..."
+               class="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none">
+        <p class="mt-1 text-xs text-zinc-500">Slack incoming webhook, Make.com webhook, or Zapier catch hook. Receives full booking context.</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-zinc-300 mb-1.5">Closer email</label>
+        <input type="email" name="closer_email" value="{{ settings.closer_email }}"
+               placeholder="closer@yourdomain.com"
+               class="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-indigo-500 focus:outline-none">
+        <p class="mt-1 text-xs text-zinc-500">Backup notification if webhook is not set. Sent via HubSpot workflow.</p>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium text-zinc-300 mb-1.5">Notification method</label>
+        <select name="notification_method"
+                class="w-full rounded-lg border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-sm text-white focus:border-indigo-500 focus:outline-none">
+          <option value="webhook" {% if not settings.closer_email %}selected{% endif %}>Webhook only</option>
+          <option value="email"   {% if settings.closer_email and not settings.closer_webhook_url %}selected{% endif %}>Email only</option>
+          <option value="both"    {% if settings.closer_email and settings.closer_webhook_url %}selected{% endif %}>Webhook + Email</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="flex items-center gap-3 pt-2">
+      <button type="submit"
+              class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-indigo-500 transition">
+        Save settings
+      </button>
+      <button type="button" id="btn-test-notif"
+              class="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-5 py-2.5 text-sm font-medium text-zinc-300 hover:bg-white/[0.08] transition">
+        Send test notification
+      </button>
+      <span id="test-result" class="text-xs text-zinc-400 hidden"></span>
+    </div>
+  </form>
+
+  <!-- Recent calls -->
+  {% if recent_calls %}
+  <div class="rounded-2xl border border-white/10 bg-white/[0.03] p-8">
+    <h2 class="text-base font-semibold text-white mb-5">Recent Inbound Calls</h2>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="text-left text-xs font-medium text-zinc-500 border-b border-white/[0.06]">
+            <th class="pb-3 pr-6">Time</th>
+            <th class="pb-3 pr-6">Duration</th>
+            <th class="pb-3 pr-6">Outcome</th>
+            <th class="pb-3 pr-6">Booking</th>
+            <th class="pb-3">Closer notified</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-white/[0.04]">
+          {% for c in recent_calls %}
+          <tr class="text-zinc-300">
+            <td class="py-3 pr-6 text-xs text-zinc-400">{{ c.created_at[:16].replace('T',' ') if c.created_at else '—' }}</td>
+            <td class="py-3 pr-6">{{ c.duration_seconds }}s</td>
+            <td class="py-3 pr-6">
+              <span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
+                {% if c.outcome == 'customer-ended-call' %}bg-zinc-800 text-zinc-300
+                {% elif c.outcome == 'escalated' %}bg-amber-950 text-amber-400
+                {% else %}bg-white/[0.05] text-zinc-400{% endif %}">
+                {{ c.outcome or '—' }}
+              </span>
+            </td>
+            <td class="py-3 pr-6">
+              {% if c.booking_confirmed %}
+              <span class="text-emerald-400 text-xs">Booked</span>
+              {% else %}
+              <span class="text-zinc-500 text-xs">—</span>
+              {% endif %}
+            </td>
+            <td class="py-3">
+              {% if c.closer_notified %}
+              <span class="text-emerald-400 text-xs">Yes</span>
+              {% else %}
+              <span class="text-zinc-500 text-xs">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+document.getElementById('btn-test-notif').addEventListener('click', async () => {
+  const btn    = document.getElementById('btn-test-notif');
+  const result = document.getElementById('test-result');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+  try {
+    const resp = await fetch('/settings/phone/test', { method: 'POST' });
+    const data = await resp.json();
+    result.textContent = data.ok ? 'Test sent.' : `Error: ${data.error}`;
+    result.className   = data.ok ? 'text-xs text-emerald-400' : 'text-xs text-red-400';
+  } catch (e) {
+    result.textContent = 'Request failed.';
+    result.className   = 'text-xs text-red-400';
+  }
+  result.classList.remove('hidden');
+  btn.disabled    = false;
+  btn.textContent = 'Send test notification';
+});
+</script>
+
+{% endif %}
+{% endblock %}

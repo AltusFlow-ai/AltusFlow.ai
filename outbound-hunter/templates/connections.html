@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AltusFlow — Connections</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e4e4e4;min-height:100vh}
+.topbar{background:#111;border-bottom:1px solid #222;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.logo{font-size:14px;font-weight:600;color:#fff;letter-spacing:.06em}
+.logo span{color:#1D9E75}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.tenant-chip{font-size:11px;color:#555;padding:4px 10px;background:#161616;border:1px solid #222;border-radius:20px;letter-spacing:.04em}
+.alert-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:#2a0f0f;border:1px solid #D85A30;border-radius:20px;font-size:12px;color:#D85A30;cursor:pointer;text-decoration:none}
+.alert-badge .dot{width:7px;height:7px;border-radius:50%;background:#D85A30}
+.sign-out{font-size:12px;color:#555;padding:5px 12px;border:1px solid #2a2a2a;border-radius:6px;text-decoration:none;transition:color .15s,border-color .15s}
+.sign-out:hover{color:#aaa;border-color:#444}
+.tabs{display:flex;gap:2px;padding:16px 24px 0}
+.tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:13px;cursor:pointer;border:none;background:transparent;color:#666;text-decoration:none;display:inline-block}
+.tab:hover{color:#aaa}
+.tab.active{background:#111;color:#fff;border:1px solid #222;border-bottom-color:#111}
+.tab.accent{color:#1D9E75}
+.main{padding:20px 24px;max-width:960px}
+.section-label{font-size:11px;font-weight:600;color:#555;letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.section-desc{font-size:12px;color:#444;margin-bottom:20px;line-height:1.6}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+
+/* Platform card */
+.pcard{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:22px 22px 20px;display:flex;flex-direction:column;gap:14px;transition:border-color .2s}
+.pcard.connected{border-color:#1D3A2A}
+.pcard-head{display:flex;align-items:center;gap:12px}
+.pcard-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px}
+.icon-hubspot{background:#2a1208;color:#FF7A59}
+.icon-meta{background:#0a1428;color:#4267B2}
+.icon-apify{background:#041a18;color:#00B6A1}
+.icon-calendly{background:#041a1a;color:#0AE8F0}
+.icon-linkedin{background:#041228;color:#0A66C2}
+.pcard-name{font-size:14px;font-weight:600;color:#fff}
+.pcard-category{font-size:11px;color:#555;margin-top:1px}
+.status-pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:600;margin-left:auto;flex-shrink:0}
+.status-connected{background:#0d2a1e;color:#1D9E75;border:1px solid #1D3A2A}
+.status-disconnected{background:#1a1a1a;color:#444;border:1px solid #252525}
+.status-error{background:#2a0f0f;color:#D85A30;border:1px solid #3d1212}
+.status-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+
+/* Connected state info */
+.conn-info{font-size:12px;color:#555;line-height:1.8}
+.conn-info strong{color:#888;font-weight:500}
+
+/* Input form */
+.field-label{font-size:10px;font-weight:600;color:#555;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+.token-wrap{position:relative}
+input[type=password],input[type=text]{width:100%;background:#0d0d0d;border:1px solid #252525;border-radius:7px;padding:9px 12px;font-size:13px;color:#e4e4e4;outline:none;transition:border-color .2s;font-family:monospace}
+input[type=password]:focus,input[type=text]:focus{border-color:#1D9E75;box-shadow:0 0 0 2px rgba(29,158,117,.1)}
+input::placeholder{color:#333;font-family:-apple-system,sans-serif}
+.toggle-vis{position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;color:#444;cursor:pointer;font-size:12px;padding:2px 4px}
+.toggle-vis:hover{color:#888}
+.pcard-actions{display:flex;gap:8px}
+.btn{padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s}
+.btn:hover{opacity:.82}
+.btn-connect{background:#1D9E75;color:#fff;width:100%}
+.btn-disconnect{background:transparent;color:#D85A30;border:1px solid #D85A30;font-size:12px;padding:6px 13px}
+.btn-muted{background:transparent;color:#555;border:1px solid #2a2a2a;font-size:12px;padding:6px 13px}
+.btn-muted:hover{color:#aaa;border-color:#444}
+
+/* Helper text */
+.helper{font-size:11px;color:#444;margin-top:4px;line-height:1.5}
+.helper a{color:#1D9E75;text-decoration:none}
+.helper a:hover{text-decoration:underline}
+
+/* Error message */
+.err-msg{font-size:11px;color:#D85A30;margin-top:4px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1D9E75;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:100}
+.toast.show{opacity:1}
+.toast.error{background:#D85A30}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">ALTUS<span>FLOW</span> &nbsp;·&nbsp; Connections</div>
+  <div class="topbar-right">
+    {% if tenant_name %}<span class="tenant-chip">{{ tenant_name }}</span>{% endif %}
+    {% if alert_count %}<a href="/" class="alert-badge"><span class="dot"></span>{{ alert_count }} alert{{ 's' if alert_count != 1 }}</a>{% endif %}
+    <a href="{{ url_for('auth.logout') }}" class="sign-out">Sign out</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="/"               class="tab">Pending</a>
+  <a href="/batch-confirm"  class="tab">Batch Confirm</a>
+  <a href="/approved"       class="tab">Approved</a>
+  <a href="/admin"          class="tab">Admin</a>
+  <a href="/budget"         class="tab">Budget</a>
+  <a href="/connections"    class="tab active accent">Connections</a>
+</div>
+
+<div class="main">
+  <p class="section-label">Platform Connections</p>
+  <p class="section-desc">Paste your API tokens below to connect each platform. Tokens are encrypted with AES-256 (Fernet) before storage — never stored in plaintext.</p>
+
+  <div class="grid">
+
+    {# ── HubSpot ────────────────────────────────────────────────────────────── #}
+    {% set hs = connections.get('hubspot', {}) %}
+    <div class="pcard {% if hs.status == 'connected' %}connected{% endif %}">
+      <div class="pcard-head">
+        <div class="pcard-icon icon-hubspot">&#x2B24;</div>
+        <div>
+          <div class="pcard-name">HubSpot</div>
+          <div class="pcard-category">CRM · Deals &amp; Contacts</div>
+        </div>
+        <span class="status-pill {% if hs.status == 'connected' %}status-connected{% elif hs.status == 'error' %}status-error{% else %}status-disconnected{% endif %}">
+          <span class="status-dot"></span>
+          {{ 'Connected' if hs.status == 'connected' else ('Error' if hs.status == 'error' else 'Not Connected') }}
+        </span>
+      </div>
+
+      {% if hs.status == 'connected' %}
+      <div class="conn-info">
+        {% if hs.account_name %}<div><strong>Account:</strong> {{ hs.account_name }}</div>{% endif %}
+        {% if hs.connected_at %}<div><strong>Connected:</strong> {{ hs.connected_at[:10] }}</div>{% endif %}
+        {% if hs.last_sync_at %}<div><strong>Last sync:</strong> {{ hs.last_sync_at[:10] }}</div>{% endif %}
+      </div>
+      <div class="pcard-actions">
+        <form method="POST" action="/connections/hubspot/disconnect">
+          <button type="submit" class="btn btn-disconnect">Disconnect</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="POST" action="/connections/hubspot">
+        <div class="field-label">Private App Token</div>
+        <div class="token-wrap">
+          <input type="password" name="token" placeholder="pat-na1-xxxxxxxx-…" autocomplete="off" id="tok-hubspot"/>
+          <button type="button" class="toggle-vis" onclick="toggleVis('tok-hubspot',this)">Show</button>
+        </div>
+        <div class="helper">Create a Private App in HubSpot → Settings → Integrations → Private Apps. Needs CRM read/write scope.</div>
+        <br/>
+        <button type="submit" class="btn btn-connect">Connect HubSpot</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {# ── Meta Ads ───────────────────────────────────────────────────────────── #}
+    {% set meta = connections.get('meta_ads', {}) %}
+    <div class="pcard {% if meta.status == 'connected' %}connected{% endif %}">
+      <div class="pcard-head">
+        <div class="pcard-icon icon-meta">&#9632;</div>
+        <div>
+          <div class="pcard-name">Meta Ads</div>
+          <div class="pcard-category">Advertising · Facebook &amp; Instagram</div>
+        </div>
+        <span class="status-pill {% if meta.status == 'connected' %}status-connected{% elif meta.status == 'error' %}status-error{% else %}status-disconnected{% endif %}">
+          <span class="status-dot"></span>
+          {{ 'Connected' if meta.status == 'connected' else ('Error' if meta.status == 'error' else 'Not Connected') }}
+        </span>
+      </div>
+
+      {% if meta.status == 'connected' %}
+      <div class="conn-info">
+        {% if meta.account_id %}<div><strong>Ad Account:</strong> {{ meta.account_id }}</div>{% endif %}
+        {% if meta.account_name %}<div><strong>Name:</strong> {{ meta.account_name }}</div>{% endif %}
+        {% if meta.connected_at %}<div><strong>Connected:</strong> {{ meta.connected_at[:10] }}</div>{% endif %}
+      </div>
+      <div class="pcard-actions">
+        <form method="POST" action="/connections/meta_ads/disconnect">
+          <button type="submit" class="btn btn-disconnect">Disconnect</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="POST" action="/connections/meta_ads">
+        <div class="field-label">Access Token</div>
+        <div class="token-wrap">
+          <input type="password" name="token" placeholder="EAAxxxxxxxx…" autocomplete="off" id="tok-meta"/>
+          <button type="button" class="toggle-vis" onclick="toggleVis('tok-meta',this)">Show</button>
+        </div>
+        <div class="field-label" style="margin-top:10px">Ad Account ID</div>
+        <input type="text" name="account_id" placeholder="act_123456789"/>
+        <div class="helper">Get from Meta Business Manager → System Users → Generate Token. Needs <code style="color:#aaa">ads_read</code> permission.</div>
+        <br/>
+        <button type="submit" class="btn btn-connect">Connect Meta Ads</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {# ── Apify ──────────────────────────────────────────────────────────────── #}
+    {% set apify = connections.get('apify', {}) %}
+    <div class="pcard {% if apify.status == 'connected' %}connected{% endif %}">
+      <div class="pcard-head">
+        <div class="pcard-icon icon-apify">&#9650;</div>
+        <div>
+          <div class="pcard-name">Apify</div>
+          <div class="pcard-category">Scraping · LinkedIn &amp; Reddit actors</div>
+        </div>
+        <span class="status-pill {% if apify.status == 'connected' %}status-connected{% elif apify.status == 'error' %}status-error{% else %}status-disconnected{% endif %}">
+          <span class="status-dot"></span>
+          {{ 'Connected' if apify.status == 'connected' else ('Error' if apify.status == 'error' else 'Not Connected') }}
+        </span>
+      </div>
+
+      {% if apify.status == 'connected' %}
+      <div class="conn-info">
+        {% if apify.account_name %}<div><strong>User:</strong> {{ apify.account_name }}</div>{% endif %}
+        {% if apify.connected_at %}<div><strong>Connected:</strong> {{ apify.connected_at[:10] }}</div>{% endif %}
+      </div>
+      <div class="pcard-actions">
+        <form method="POST" action="/connections/apify/disconnect">
+          <button type="submit" class="btn btn-disconnect">Disconnect</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="POST" action="/connections/apify">
+        <div class="field-label">API Token</div>
+        <div class="token-wrap">
+          <input type="password" name="token" placeholder="apify_api_xxxxxxxx…" autocomplete="off" id="tok-apify"/>
+          <button type="button" class="toggle-vis" onclick="toggleVis('tok-apify',this)">Show</button>
+        </div>
+        <div class="helper">Find your token at <a href="https://console.apify.com/account/integrations" target="_blank">console.apify.com</a> → Settings → Integrations.</div>
+        <br/>
+        <button type="submit" class="btn btn-connect">Connect Apify</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {# ── Calendly ───────────────────────────────────────────────────────────── #}
+    {% set cal = connections.get('calendly', {}) %}
+    <div class="pcard {% if cal.status == 'connected' %}connected{% endif %}">
+      <div class="pcard-head">
+        <div class="pcard-icon icon-calendly">&#9632;</div>
+        <div>
+          <div class="pcard-name">Calendly</div>
+          <div class="pcard-category">Scheduling · Booking automation</div>
+        </div>
+        <span class="status-pill {% if cal.status == 'connected' %}status-connected{% elif cal.status == 'error' %}status-error{% else %}status-disconnected{% endif %}">
+          <span class="status-dot"></span>
+          {{ 'Connected' if cal.status == 'connected' else ('Error' if cal.status == 'error' else 'Not Connected') }}
+        </span>
+      </div>
+
+      {% if cal.status == 'connected' %}
+      <div class="conn-info">
+        {% if cal.account_name %}<div><strong>User:</strong> {{ cal.account_name }}</div>{% endif %}
+        {% if cal.connected_at %}<div><strong>Connected:</strong> {{ cal.connected_at[:10] }}</div>{% endif %}
+      </div>
+      <div class="pcard-actions">
+        <form method="POST" action="/connections/calendly/disconnect">
+          <button type="submit" class="btn btn-disconnect">Disconnect</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="POST" action="/connections/calendly">
+        <div class="field-label">Personal Access Token</div>
+        <div class="token-wrap">
+          <input type="password" name="token" placeholder="eyJhbGci…" autocomplete="off" id="tok-calendly"/>
+          <button type="button" class="toggle-vis" onclick="toggleVis('tok-calendly',this)">Show</button>
+        </div>
+        <div class="helper">Calendly → Account → Integrations → API &amp; Webhooks → Personal Access Tokens. Free plan supported (polls every 15 min).</div>
+        <br/>
+        <button type="submit" class="btn btn-connect">Connect Calendly</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {# ── LinkedIn ───────────────────────────────────────────────────────────── #}
+    {% set li = connections.get('linkedin', {}) %}
+    <div class="pcard {% if li.status == 'connected' %}connected{% endif %}">
+      <div class="pcard-head">
+        <div class="pcard-icon icon-linkedin">in</div>
+        <div>
+          <div class="pcard-name">LinkedIn</div>
+          <div class="pcard-category">Outreach · Cookie-based scraping</div>
+        </div>
+        <span class="status-pill {% if li.status == 'connected' %}status-connected{% elif li.status == 'error' %}status-error{% else %}status-disconnected{% endif %}">
+          <span class="status-dot"></span>
+          {{ 'Connected' if li.status == 'connected' else ('Error' if li.status == 'error' else 'Not Connected') }}
+        </span>
+      </div>
+
+      {% if li.status == 'connected' %}
+      <div class="conn-info">
+        {% if li.account_name %}<div><strong>Account:</strong> {{ li.account_name }}</div>{% endif %}
+        {% if li.connected_at %}<div><strong>Connected:</strong> {{ li.connected_at[:10] }}</div>{% endif %}
+      </div>
+      <div class="pcard-actions">
+        <form method="POST" action="/connections/linkedin/disconnect">
+          <button type="submit" class="btn btn-disconnect">Disconnect</button>
+        </form>
+      </div>
+      {% else %}
+      <form method="POST" action="/connections/linkedin">
+        <div class="field-label">li_at Cookie</div>
+        <div class="token-wrap">
+          <input type="password" name="token" placeholder="AQEDARxxxxxx…" autocomplete="off" id="tok-linkedin"/>
+          <button type="button" class="toggle-vis" onclick="toggleVis('tok-linkedin',this)">Show</button>
+        </div>
+        <div class="helper">In Chrome: DevTools → Application → Cookies → linkedin.com → copy the <code style="color:#aaa">li_at</code> value. Refresh every 30 days.</div>
+        <br/>
+        <button type="submit" class="btn btn-connect">Connect LinkedIn</button>
+      </form>
+      {% endif %}
+    </div>
+
+  </div><!-- /grid -->
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+function toggleVis(id, btn) {
+  const inp = document.getElementById(id);
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = 'Hide';
+  } else {
+    inp.type = 'password';
+    btn.textContent = 'Show';
+  }
+}
+const p = new URLSearchParams(location.search);
+if (p.get('connected')) {
+  const t = document.getElementById('toast');
+  t.textContent = p.get('connected') + ' connected successfully.';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+if (p.get('disconnected')) {
+  const t = document.getElementById('toast');
+  t.textContent = p.get('disconnected') + ' disconnected.';
+  t.classList.add('show', 'error');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

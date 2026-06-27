@@ -1,0 +1,42 @@
+{
+  "pod_slug": "msps",
+  "scrapers": {
+    "reddit": {
+      "enabled": true,
+      "priority": 1,
+      "rate_limit_per_hour": 30,
+      "actor": "apify/reddit-scraper",
+      "notes": "Primary — highest density of unguarded IT pain from business owners. r/smallbusiness is the richest subreddit."
+    },
+    "linkedin": {
+      "enabled": true,
+      "priority": 2,
+      "rate_limit_per_hour": 10,
+      "actor": "apify/linkedin-post-search-scraper",
+      "notes": "MSP owners post BD pain on LinkedIn. Business owners post IT frustrations openly."
+    },
+    "facebook": {
+      "enabled": true,
+      "priority": 3,
+      "rate_limit_per_hour": 15,
+      "actor": "apify/facebook-groups-scraper",
+      "notes": "MSP-specific Facebook groups and small business communities"
+    }
+  },
+  "outbound": {
+    "hubspot": {
+      "enabled": true,
+      "portal_id": null,
+      "sequence_id": null,
+      "notes": "Set portal_id and sequence_id per client. Urgent prospects (security incidents) should be placed in a priority sequence."
+    },
+    "meta_ads": {
+      "enabled": false,
+      "notes": "Disabled by default"
+    },
+    "calendly": {
+      "enabled": true,
+      "notes": "Discovery call CTAs. Urgent security incident prospects get a same-day calendar link."
+    }
+  }
+}

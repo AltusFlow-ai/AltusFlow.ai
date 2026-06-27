@@ -1,0 +1,81 @@
+{
+  "pod_slug": "financial-advisors",
+  "allowed_tools": [
+    {
+      "name": "apify_linkedin",
+      "actor": "apify/linkedin-post-search-scraper",
+      "version": "stable",
+      "rate_limit": "10_per_hour",
+      "data_retained": "handle, post_text, profile_url, title, company",
+      "pii_handling": "stored in tenant DB only, SHA-256 hashed before any Meta CAPI call",
+      "niche_notes": "Target advisor-specific signal phrases. Prioritise posts mentioning AUM, book of business, independent practice, RIA, CFP."
+    },
+    {
+      "name": "apify_facebook",
+      "actor": "apify/facebook-groups-scraper",
+      "version": "stable",
+      "rate_limit": "10_per_hour",
+      "data_retained": "handle, post_text, group_name, profile_url",
+      "pii_handling": "stored in tenant DB only",
+      "target_groups": [
+        "Financial Advisors Mastermind",
+        "Independent RIA Network",
+        "Fee-Only Advisors Community",
+        "NAPFA Community",
+        "Financial Planning Association"
+      ]
+    },
+    {
+      "name": "reddit_api",
+      "library": "praw",
+      "version": "free_tier",
+      "rate_limit": "60_per_minute",
+      "data_retained": "reddit_username, post_text, subreddit, post_url",
+      "pii_handling": "username stored, never used for outreach — LinkedIn search URL pre-filled instead",
+      "target_subreddits": [
+        "financialplanning",
+        "CFP",
+        "FinancialAdvisors",
+        "personalfinance"
+      ]
+    },
+    {
+      "name": "hubspot_contacts",
+      "permission": "read_write",
+      "api_version": "v3",
+      "access_via": "EventDispatcher only — never called directly from pod"
+    },
+    {
+      "name": "hubspot_deals",
+      "permission": "read_write",
+      "api_version": "v3",
+      "access_via": "EventDispatcher only"
+    },
+    {
+      "name": "claude_api",
+      "model": "claude-sonnet-4-6",
+      "max_tokens_per_call": 1000,
+      "use_cases": [
+        "ICP confidence scoring",
+        "outreach drafting",
+        "pre-call briefs (advisor context: AUM signals, practice type, pain category)"
+      ],
+      "sdk": "none — direct HTTP POST via urllib.request"
+    },
+    {
+      "name": "meta_custom_audiences",
+      "permission": "write_only",
+      "access_via": "EventDispatcher only (Phase 2)",
+      "pii_handling": "email SHA-256 hashed before transmission"
+    }
+  ],
+  "forbidden_tools": [
+    "direct_email_send",
+    "auto_linkedin_send",
+    "auto_twitter_dm",
+    "any_tool_not_listed_above",
+    "direct_hubspot_call_from_pod",
+    "direct_meta_api_call_from_pod"
+  ],
+  "token_storage": "Fernet AES-256 encrypted in platform_connections table — never plaintext, never in code"
+}

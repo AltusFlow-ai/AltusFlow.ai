@@ -1,0 +1,36 @@
+{
+  "pod_slug": "recruiters",
+  "schedule": "0 7 * * *",
+  "max_approvals_per_run": 35,
+  "min_score_to_qualify": 4,
+  "auto_approve_above": 9.0,
+  "platforms_priority": ["linkedin", "facebook", "reddit"],
+  "subreddits": [
+    "recruiting",
+    "humanresources",
+    "jobs",
+    "smallbusiness",
+    "startups",
+    "cscareerquestions"
+  ],
+  "facebook_groups": [
+    "Recruitment and Staffing Professionals",
+    "Agency Recruiter Network",
+    "HR and Talent Acquisition Leaders",
+    "Independent Recruiter Network"
+  ],
+  "linkedin_search_queries": [
+    "recruitment agency business development",
+    "how do recruiters get clients",
+    "growing my staffing agency",
+    "talent acquisition help hiring manager",
+    "struggling to fill roles"
+  ],
+  "prospect_types": ["agency_owner", "hiring_manager"],
+  "abort_if": [
+    "job_seeker_post",
+    "job_listing_post",
+    "layoff_fired_content"
+  ],
+  "notes": "LinkedIn is primary — both agency owners and hiring managers post there openly about BD pain and talent struggles. Tag each prospect with prospect_type before scoring."
+}

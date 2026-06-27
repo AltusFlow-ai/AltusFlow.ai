@@ -1,0 +1,36 @@
+{
+  "pod_slug": "altusflow-own",
+  "schedule": "0 6 * * *",
+  "max_approvals_per_run": 20,
+  "min_score_to_qualify": 8,
+  "auto_approve_above": 9.5,
+  "confidence_threshold": 9.5,
+  "platforms_priority": ["linkedin", "facebook", "reddit"],
+  "target_niches": [
+    "financial-advisors",
+    "business-coaches",
+    "recruiters",
+    "commercial-real-estate",
+    "msps"
+  ],
+  "linkedin_search_queries": [
+    "how do financial advisors get clients",
+    "how do coaches get clients",
+    "how do recruiters get more clients",
+    "cre lead generation",
+    "how do msps get clients",
+    "growing my advisory practice",
+    "growing my staffing agency",
+    "commercial real estate marketing",
+    "msp business development"
+  ],
+  "hubspot_portal": 246530361,
+  "client_id": "ALT00",
+  "abort_if": [
+    "already_in_hubspot",
+    "not_in_target_niche",
+    "competitor_marketing_agency",
+    "score_below_8"
+  ],
+  "notes": "AltusFlow's own client acquisition pod. Higher quality bar than client pods — auto-approve threshold 9.5, min score 8. Always check HubSpot before qualifying. All messages represent Austin at AltusFlow.ai — brand voice must be direct and non-automated-sounding."
+}

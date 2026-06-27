@@ -1,0 +1,42 @@
+{
+  "pod_slug": "business-coaches",
+  "scrapers": {
+    "facebook": {
+      "enabled": true,
+      "priority": 1,
+      "rate_limit_per_hour": 15,
+      "actor": "apify/facebook-groups-scraper",
+      "notes": "Primary source — Facebook Groups have the most candid pain expression for this niche"
+    },
+    "reddit": {
+      "enabled": true,
+      "priority": 2,
+      "rate_limit_per_hour": 30,
+      "actor": "apify/reddit-scraper",
+      "notes": "Anonymous posting = unguarded pain signal. r/Entrepreneur and r/smallbusiness are highest yield."
+    },
+    "linkedin": {
+      "enabled": true,
+      "priority": 3,
+      "rate_limit_per_hour": 10,
+      "actor": "apify/linkedin-post-search-scraper",
+      "notes": "Lower volume, higher intent. Use for business owners explicitly naming coaching struggles."
+    }
+  },
+  "outbound": {
+    "hubspot": {
+      "enabled": true,
+      "portal_id": null,
+      "sequence_id": null,
+      "notes": "Set portal_id and sequence_id per client in HubSpot connection config"
+    },
+    "meta_ads": {
+      "enabled": false,
+      "notes": "Disabled by default — enable per client when Meta audience targeting is approved"
+    },
+    "calendly": {
+      "enabled": true,
+      "notes": "Used for discovery call CTAs in approved messages"
+    }
+  }
+}

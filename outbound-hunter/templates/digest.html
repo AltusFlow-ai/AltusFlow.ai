@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AltusFlow — Outbound Hunter</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e4e4e4;min-height:100vh}
+.topbar{background:#111;border-bottom:1px solid #222;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.logo{font-size:14px;font-weight:600;color:#fff;letter-spacing:.06em}
+.logo span{color:#1D9E75}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.stats{display:flex;gap:20px;align-items:center}
+.stat{text-align:center}
+.stat-n{font-size:18px;font-weight:600;color:#fff}
+.stat-l{font-size:10px;color:#666;letter-spacing:.06em}
+.alert-badge{position:relative;display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:#2a0f0f;border:1px solid #D85A30;border-radius:20px;font-size:12px;color:#D85A30;cursor:pointer;text-decoration:none;white-space:nowrap}
+.alert-badge:hover{background:#3a1a1a}
+.alert-badge .dot{width:7px;height:7px;border-radius:50%;background:#D85A30}
+.tabs{display:flex;gap:2px;padding:16px 24px 0}
+.tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:13px;cursor:pointer;border:none;background:transparent;color:#666;text-decoration:none;display:inline-block}
+.tab:hover{color:#aaa}
+.tab.active{background:#111;color:#fff;border:1px solid #222;border-bottom-color:#111}
+.tab.batch{color:#1D9E75}
+.tab.batch.active{color:#1D9E75}
+.niche-filters{display:flex;gap:8px;padding:14px 24px 0;flex-wrap:wrap;align-items:center}
+.niche-label{font-size:11px;color:#555;letter-spacing:.06em}
+.niche-chip{padding:4px 12px;border-radius:12px;font-size:12px;cursor:pointer;border:1px solid #2a2a2a;background:transparent;color:#666;text-decoration:none}
+.niche-chip:hover{border-color:#444;color:#aaa}
+.niche-chip.active{background:#0f2a1e;border-color:#1D9E75;color:#1D9E75}
+.main{padding:20px 24px}
+.actions-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:12px;flex-wrap:wrap}
+.actions-left{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.run-btn{background:#1D9E75;color:#fff;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer}
+.run-btn:disabled{opacity:.5;cursor:not-allowed}
+.export-btn{background:transparent;color:#1D9E75;border:1px solid #1D9E75;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;text-decoration:none}
+.batch-actions{display:flex;gap:8px;align-items:center}
+.select-all-btn{background:transparent;color:#888;border:1px solid #2a2a2a;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer}
+.select-all-btn:hover{border-color:#444;color:#aaa}
+.confirm-btn{background:#1D9E75;color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s}
+.confirm-btn:hover{opacity:.85}
+.confirm-btn:disabled{opacity:.4;cursor:not-allowed}
+.confirm-count{font-size:12px;color:#666}
+.empty{text-align:center;padding:80px 20px;color:#444;font-size:15px}
+.empty a{color:#1D9E75;text-decoration:none}
+.card{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:18px 20px;margin-bottom:12px;transition:border-color .2s}
+.card:hover{border-color:#333}
+.card.selected{border-color:#1D9E75}
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.prospect-info{display:flex;align-items:flex-start;gap:12px;flex:1;min-width:0}
+.card-checkbox{width:18px;height:18px;cursor:pointer;margin-top:10px;accent-color:#1D9E75;flex-shrink:0}
+.avatar{width:38px;height:38px;border-radius:50%;background:#1D9E75;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#fff;flex-shrink:0}
+.prospect-name{font-size:14px;font-weight:500;color:#fff}
+.prospect-meta{font-size:12px;color:#666;margin-top:2px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500}
+.badge-twitter{background:#1a2833;color:#1d9bf0}
+.badge-linkedin{background:#112038;color:#0a66c2}
+.badge-score{background:#0f2a1e;color:#1D9E75}
+.badge-score.mid{background:#2a1f0f;color:#EF9F27}
+.badge-score.low{background:#2a0f0f;color:#D85A30}
+.badge-niche{background:#1a1a2e;color:#8b7cf6}
+.badge-auto-approved{background:#0f2a1e;color:#1D9E75}
+.badge-pending{background:#2a1f0f;color:#EF9F27}
+.badge-confidence{background:#0d1a0d;color:#1D9E75;border:1px solid #1D9E75}
+.badge-confidence.mid{background:#1a1000;color:#EF9F27;border-color:#EF9F27}
+.badge-confidence.low{background:#1a0000;color:#D85A30;border-color:#D85A30}
+.badge-reddit{background:#1a1420;color:#ff4500}
+.badge-facebook{background:#0f1a2a;color:#4267B2}
+.badge-li-req{background:#2a1f00;color:#EF9F27;border:1px solid #EF9F27;text-decoration:none;cursor:pointer}
+.badge-li-req:hover{background:#3a2a00}
+.signal-post{background:#161616;border:1px solid #222;border-left:3px solid #1D9E75;border-radius:0 8px 8px 0;padding:12px 14px;margin-bottom:12px;font-size:13px;color:#ccc;line-height:1.6}
+.signal-label{font-size:10px;font-weight:600;color:#1D9E75;letter-spacing:.08em;margin-bottom:6px}
+.post-meta{font-size:11px;color:#444;margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
+.post-meta a{color:#1D9E75;text-decoration:none}
+.icp-notes{font-size:11px;color:#555;margin-bottom:10px;padding:6px 10px;background:#0d0d0d;border-radius:6px;line-height:1.5}
+.confidence-reason{font-size:11px;color:#666;margin-bottom:10px;padding:6px 10px;background:#0d1a0d;border-radius:6px;border-left:2px solid #1D9E75;line-height:1.5;font-style:italic}
+.message-section{margin-bottom:14px}
+.message-label{font-size:10px;font-weight:600;color:#888;letter-spacing:.08em;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.char-count{font-size:11px;color:#555}
+.message-box{width:100%;background:#161616;border:1px solid #2a2a2a;border-radius:8px;padding:10px 12px;color:#e4e4e4;font-size:13px;line-height:1.6;resize:vertical;min-height:80px;font-family:inherit}
+.message-box:focus{outline:none;border-color:#1D9E75}
+.card-actions{display:flex;gap:8px}
+.btn-approve{flex:1;background:#1D9E75;color:#fff;border:none;padding:10px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:opacity .15s}
+.btn-approve:hover{opacity:.85}
+.btn-skip{background:transparent;color:#555;border:1px solid #2a2a2a;padding:10px 18px;border-radius:8px;font-size:13px;cursor:pointer}
+.btn-skip:hover{border-color:#444;color:#888}
+.btn-sent{background:#0f2a1e;color:#1D9E75;border:1px solid #1D9E75;padding:10px 18px;border-radius:8px;font-size:13px;cursor:pointer}
+.btn-brief{background:transparent;color:#8b7cf6;border:1px solid #8b7cf6;padding:10px 16px;border-radius:8px;font-size:13px;cursor:pointer;transition:opacity .15s}
+.btn-brief:hover{opacity:.8}
+.btn-brief:disabled{opacity:.4;cursor:not-allowed}
+.hs-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:6px;margin-top:6px}
+.hs-pushed{background:#0f2a1e;color:#1D9E75}
+.hs-failed{background:#2a0f0f;color:#D85A30}
+.btn-retry{background:transparent;color:#D85A30;border:1px solid #D85A30;padding:8px 14px;border-radius:8px;font-size:12px;cursor:pointer;margin-top:6px}
+.btn-retry:hover{background:#2a0f0f}
+.cta-url{font-size:11px;color:#555;margin-top:4px;word-break:break-all}
+.cta-url a{color:#1D9E75;text-decoration:none}
+.toast{position:fixed;bottom:24px;right:24px;background:#1D9E75;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:100;max-width:340px}
+.toast.show{opacity:1}
+.batch-result-error{font-size:11px;color:#D85A30;margin-top:4px;padding:4px 8px;background:#2a0f0f;border-radius:4px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">ALTUS<span>FLOW</span> &nbsp;·&nbsp; Outbound Hunter</div>
+  <div class="topbar-right">
+    <div class="stats">
+      {% if view == 'batch_confirm' %}
+      <div class="stat"><div class="stat-n">{{ stats.auto_approved }}</div><div class="stat-l">AUTO-APPROVED</div></div>
+      {% else %}
+      <div class="stat"><div class="stat-n">{{ stats.pending }}</div><div class="stat-l">PENDING</div></div>
+      <div class="stat"><div class="stat-n">{{ stats.auto_approved }}</div><div class="stat-l">TO CONFIRM</div></div>
+      {% endif %}
+      <div class="stat"><div class="stat-n">{{ stats.approved }}</div><div class="stat-l">APPROVED</div></div>
+      <div class="stat"><div class="stat-n">{{ stats.sent }}</div><div class="stat-l">SENT</div></div>
+    </div>
+    {% if alert_count > 0 %}
+    <a href="/admin" class="alert-badge">
+      <span class="dot"></span>{{ alert_count }} alert{{ 's' if alert_count != 1 }}
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="/" class="tab {% if view == 'pending' %}active{% endif %}">
+    Pending review ({{ stats.pending }})
+  </a>
+  <a href="/batch-confirm" class="tab batch {% if view == 'batch_confirm' %}active{% endif %}">
+    One-click confirm ({{ stats.auto_approved }})
+  </a>
+  <a href="/approved" class="tab {% if view == 'approved' %}active{% endif %}">
+    Approved queue ({{ stats.approved }})
+  </a>
+  <a href="/admin" class="tab">Admin</a>
+</div>
+
+{% if niches %}
+<div class="niche-filters">
+  <span class="niche-label">NICHE</span>
+  <a href="{{ request.path }}" class="niche-chip {% if not active_niche %}active{% endif %}">All</a>
+  {% for n in niches %}
+  <a href="{{ request.path }}?niche={{ n }}" class="niche-chip {% if active_niche == n %}active{% endif %}">
+    {{ n.replace('-', ' ').replace('_', ' ').title() }}{% if niche_counts.get(n) %} ({{ niche_counts[n] }}){% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+<div class="main">
+
+  {# ── BATCH CONFIRM view ─────────────────────────────────────────────────── #}
+  {% if view == 'batch_confirm' %}
+  <div class="actions-bar">
+    <div class="batch-actions">
+      <button class="select-all-btn" onclick="approveAbove7()" title="Select all prospects with ICP score 7 or higher, then confirm">Approve all 7+ ⚡</button>
+      <button class="select-all-btn" onclick="toggleSelectAll()">Select all</button>
+      <button class="confirm-btn" id="confirm-btn" onclick="batchConfirm()" disabled>
+        Confirm selected (0)
+      </button>
+      <span class="confirm-count" id="confirm-count"></span>
+    </div>
+    <a href="/export" class="export-btn">Export CSV</a>
+  </div>
+
+  {% if not prospects %}
+  <div class="empty">
+    No prospects in the one-click confirm queue.<br>
+    Auto-approved prospects (confidence 9-10) appear here after the next scan.<br>
+    {% if stats.pending > 0 %}<a href="/">{{ stats.pending }} prospect{{ 's' if stats.pending != 1 }} need manual review.</a>{% endif %}
+  </div>
+  {% endif %}
+
+  {% for p in prospects %}
+  <div class="card" id="card-{{ p.id }}">
+    <div class="card-header">
+      <input type="checkbox" class="card-checkbox" id="chk-{{ p.id }}"
+             data-score="{{ p.icp_score or 0 }}"
+             onchange="updateBatchCount()" checked>
+      <div class="prospect-info">
+        <div class="avatar">{{ (p.handle or p.name or '?')[0].upper() }}</div>
+        <div>
+          <div class="prospect-name">{% if p.platform == 'reddit' %}u/{% endif %}{{ p.handle or p.name or 'Unknown' }}</div>
+          <div class="prospect-meta">
+            {% if p.group_name %}{{ p.group_name }}{% elif p.subreddit %}r/{{ p.subreddit }}{% endif %}
+          </div>
+          <div class="badges">
+            <span class="badge badge-score {% if p.icp_score >= 7 %}{% elif p.icp_score >= 5 %}mid{% else %}low{% endif %}">ICP {{ p.icp_score }}/10</span>
+            {% if p.outreach_method == 'reddit_dm' %}
+            <a href="{{ p.profile_url }}" target="_blank" class="badge badge-reddit-dm">Send Reddit DM →</a>
+            {% elif p.outreach_method == 'find_linkedin' %}
+            <a href="{{ p.linkedin_search_url }}" target="_blank" class="badge badge-li-req">Send via LinkedIn →</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="signal-post">
+      <div class="signal-label">THEIR EXACT POST</div>
+      {{ p.post_text }}
+      <div class="post-meta">
+        {% if p.post_date %}<span>{{ p.post_date[:10] }}</span>{% endif %}
+        {% if p.post_url %}<a href="{{ p.post_url }}" target="_blank">View on Reddit</a>{% endif %}
+        {% if p.profile_url %}<a href="{{ p.profile_url }}" target="_blank">Profile</a>{% endif %}
+        {% if p.signal_phrase %}<span>Matched: "{{ p.signal_phrase }}"</span>{% endif %}
+      </div>
+    </div>
+
+    <div class="message-section">
+      <div class="message-label">
+        OUTREACH MESSAGE
+        <span class="char-count" id="count-{{ p.id }}">0 chars</span>
+      </div>
+      <textarea class="message-box" id="msg-{{ p.id }}"
+                oninput="updateCount({{ p.id }})">{{ p.drafted_message or '' }}</textarea>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn-approve" onclick="approveSingle({{ p.id }})">Approve</button>
+      <button class="btn-skip" onclick="skip({{ p.id }})">Skip</button>
+    </div>
+    <div id="batch-result-{{ p.id }}"></div>
+  </div>
+  {% endfor %}
+
+  {# ── PENDING REVIEW view ────────────────────────────────────────────────── #}
+  {% elif view == 'pending' %}
+  <div class="actions-bar">
+    <div class="actions-left">
+      <button class="run-btn" id="run-btn" onclick="runHunter()">Run scan now</button>
+    </div>
+    <a href="/export" class="export-btn">Export CSV</a>
+  </div>
+
+  {% if not prospects %}
+  <div class="empty">
+    No prospects pending manual review.
+    {% if stats.auto_approved > 0 %}
+    <br><a href="/batch-confirm">{{ stats.auto_approved }} prospect{{ 's' if stats.auto_approved != 1 }} in the one-click confirm queue.</a>
+    {% else %}
+    <br>Click "Run scan now" to scan for new leads.
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% for p in prospects %}
+  <div class="card" id="card-{{ p.id }}">
+    <div class="card-header">
+      <div class="prospect-info">
+        <div class="avatar">{{ (p.handle or p.name or '?')[0].upper() }}</div>
+        <div>
+          <div class="prospect-name">{% if p.platform == 'reddit' %}u/{% endif %}{{ p.handle or p.name or 'Unknown' }}</div>
+          <div class="prospect-meta">
+            {% if p.group_name %}{{ p.group_name }}{% elif p.subreddit %}r/{{ p.subreddit }}{% endif %}
+          </div>
+          <div class="badges">
+            <span class="badge badge-score {% if p.icp_score >= 7 %}{% elif p.icp_score >= 5 %}mid{% else %}low{% endif %}">ICP {{ p.icp_score }}/10</span>
+            {% if p.outreach_method == 'reddit_dm' %}
+            <a href="{{ p.profile_url }}" target="_blank" class="badge badge-reddit-dm">Send Reddit DM →</a>
+            {% elif p.outreach_method == 'find_linkedin' %}
+            <a href="{{ p.linkedin_search_url }}" target="_blank" class="badge badge-li-req">Send via LinkedIn →</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="signal-post">
+      <div class="signal-label">THEIR EXACT POST</div>
+      {{ p.post_text }}
+      <div class="post-meta">
+        {% if p.post_date %}<span>{{ p.post_date[:10] }}</span>{% endif %}
+        {% if p.post_url %}<a href="{{ p.post_url }}" target="_blank">View on Reddit</a>{% endif %}
+        {% if p.profile_url %}<a href="{{ p.profile_url }}" target="_blank">Profile</a>{% endif %}
+        {% if p.signal_phrase %}<span>Matched: "{{ p.signal_phrase }}"</span>{% endif %}
+      </div>
+    </div>
+
+    {% if p.hs_status == 'pushed' %}
+    <div class="hs-status hs-pushed">HubSpot — contact &amp; deal created{% if p.hs_contact_id %} &nbsp;·&nbsp; <span style="opacity:.5">{{ p.hs_contact_id }}</span>{% endif %}</div>
+    {% elif p.hs_status == 'failed' %}
+    <div class="hs-status hs-failed">HubSpot push failed{% if p.hs_error %}: {{ p.hs_error[:80] }}{% endif %}</div>
+    <button class="btn-retry" onclick="retryHs({{ p.id }})">Retry HubSpot push</button>
+    {% endif %}
+
+    <div class="message-section">
+      <div class="message-label">
+        OUTREACH MESSAGE
+        <span class="char-count" id="count-{{ p.id }}">0 chars</span>
+      </div>
+      <textarea class="message-box" id="msg-{{ p.id }}"
+                oninput="updateCount({{ p.id }})">{{ p.drafted_message or '' }}</textarea>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn-approve" onclick="approve({{ p.id }})">Approve &amp; add to queue</button>
+      <button class="btn-skip" onclick="skip({{ p.id }})">Skip</button>
+    </div>
+  </div>
+  {% endfor %}
+
+  {# ── APPROVED QUEUE view ────────────────────────────────────────────────── #}
+  {% else %}
+  <div class="actions-bar">
+    <div class="actions-left">
+      <button class="run-btn" id="run-btn" onclick="runHunter()">Run scan now</button>
+    </div>
+    <a href="/export" class="export-btn">Export CSV</a>
+  </div>
+
+  {% if not prospects %}
+  <div class="empty">
+    No approved prospects yet.<br>
+    <a href="/batch-confirm">Check the one-click confirm queue</a> or
+    <a href="/">review pending prospects</a>.
+  </div>
+  {% endif %}
+
+  {% for p in prospects %}
+  <div class="card" id="card-{{ p.id }}">
+    <div class="card-header">
+      <div class="prospect-info">
+        <div class="avatar">{{ (p.name or '?')[0].upper() }}</div>
+        <div>
+          <div class="prospect-name">{{ p.name or 'Unknown' }}</div>
+          <div class="prospect-meta">{{ p.title or '' }}{% if p.company %} · {{ p.company }}{% endif %}</div>
+          <div class="badges">
+            <span class="badge {% if p.platform == 'reddit' %}badge-reddit{% elif p.platform == 'facebook' %}badge-facebook{% elif p.platform == 'linkedin' %}badge-linkedin{% else %}badge-twitter{% endif %}">{{ p.platform }}</span>
+            {% set niche_label = (p.niche_segment or p.niche or '') %}
+            {% if niche_label %}<span class="badge badge-niche">{{ niche_label.replace('-',' ').replace('_',' ').title() }}</span>{% endif %}
+            {% if p.outreach_method == 'reddit_dm' %}
+            <a href="{{ p.profile_url }}" target="_blank" class="badge badge-reddit-dm" title="Send DM via Reddit">Reddit DM ready</a>
+            {% elif p.outreach_method == 'find_linkedin' %}
+            <a href="{{ p.linkedin_search_url }}" target="_blank" class="badge badge-li-req" title="Found on Reddit — reach via LinkedIn">LinkedIn search required</a>
+            {% endif %}
+            <span class="badge badge-score {% if p.icp_score >= 7 %}{% elif p.icp_score >= 5 %}mid{% else %}low{% endif %}">ICP {{ p.icp_score }}/10</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    {% if p.hs_status == 'pushed' %}
+    <div class="hs-status hs-pushed">HubSpot — contact &amp; deal created{% if p.hs_contact_id %} &nbsp;·&nbsp; <span style="opacity:.5">{{ p.hs_contact_id }}</span>{% endif %}</div>
+    {% elif p.hs_status == 'failed' %}
+    <div class="hs-status hs-failed">HubSpot push failed{% if p.hs_error %}: {{ p.hs_error[:80] }}{% endif %}</div>
+    <button class="btn-retry" onclick="retryHs({{ p.id }})">Retry HubSpot push</button>
+    {% endif %}
+
+    {% if p.cta_url %}
+    <div class="cta-url">CTA: <a href="{{ p.cta_url }}" target="_blank">{{ p.cta_url }}</a></div>
+    {% endif %}
+
+    <div class="message-section">
+      <div class="message-label">
+        OUTREACH MESSAGE
+        <span class="char-count" id="count-{{ p.id }}">0 chars</span>
+      </div>
+      <textarea class="message-box" id="msg-{{ p.id }}"
+                oninput="updateCount({{ p.id }})">{{ p.drafted_message or '' }}</textarea>
+    </div>
+
+    <div class="card-actions">
+      <button class="btn-sent" onclick="markSent({{ p.id }})">Mark as sent</button>
+      <button class="btn-brief" id="brief-btn-{{ p.id }}" onclick="generateBrief({{ p.id }})"
+              {% if p.pre_call_brief %}title="Brief already generated — click to regenerate"{% endif %}>
+        {{ 'Regenerate brief' if p.pre_call_brief else 'Generate brief' }}
+      </button>
+    </div>
+  </div>
+  {% endfor %}
+  {% endif %}
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || '#1D9E75';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+function updateCount(id) {
+  const ta  = document.getElementById('msg-' + id);
+  const cnt = document.getElementById('count-' + id);
+  if (!ta || !cnt) return;
+  const n = ta.value.length;
+  cnt.textContent = n + ' chars';
+  cnt.style.color = n > 500 ? '#D85A30' : n > 300 ? '#EF9F27' : '#555';
+}
+
+document.querySelectorAll('.message-box').forEach(ta => {
+  const id = ta.id.replace('msg-','');
+  updateCount(id);
+});
+
+// ── Batch confirm ─────────────────────────────────────────────────────────────
+function updateBatchCount() {
+  const checks = document.querySelectorAll('.card-checkbox');
+  const selected = Array.from(checks).filter(c => c.checked);
+  const btn  = document.getElementById('confirm-btn');
+  const info = document.getElementById('confirm-count');
+  if (btn) {
+    btn.disabled = selected.length === 0;
+    btn.textContent = `Confirm selected (${selected.length})`;
+  }
+  if (info) info.textContent = '';
+}
+
+let _allSelected = true;
+function toggleSelectAll() {
+  _allSelected = !_allSelected;
+  document.querySelectorAll('.card-checkbox').forEach(c => c.checked = _allSelected);
+  document.querySelector('.select-all-btn').textContent = _allSelected ? 'Deselect all' : 'Select all';
+  updateBatchCount();
+}
+
+// Initialise count on page load for batch_confirm view
+if (document.getElementById('confirm-btn')) {
+  updateBatchCount();
+}
+
+function approveAbove7() {
+  const checks = document.querySelectorAll('.card-checkbox');
+  let selected = 0;
+  checks.forEach(c => {
+    const score = parseInt(c.dataset.score || '0', 10);
+    c.checked = score >= 7;
+    if (c.checked) selected++;
+  });
+  updateBatchCount();
+  if (selected > 0) {
+    batchConfirm();
+  } else {
+    showToast('No prospects with ICP 7+ found', '#EF9F27');
+  }
+}
+
+async function batchConfirm() {
+  const checks = Array.from(document.querySelectorAll('.card-checkbox')).filter(c => c.checked);
+  if (!checks.length) return;
+
+  const btn = document.getElementById('confirm-btn');
+  btn.disabled = true;
+  btn.textContent = 'Confirming...';
+
+  const ids      = checks.map(c => parseInt(c.id.replace('chk-','')));
+  const messages = {};
+  ids.forEach(id => {
+    const ta = document.getElementById('msg-' + id);
+    if (ta) messages[id] = ta.value;
+  });
+
+  const r    = await fetch('/batch-confirm', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ids, messages}),
+  });
+  const data = await r.json();
+
+  let ok_count = 0, fail_count = 0;
+  (data.results || []).forEach(res => {
+    const card = document.getElementById('card-' + res.id);
+    if (res.ok) {
+      ok_count++;
+      if (card) { card.style.opacity = '.3'; setTimeout(() => card.remove(), 500); }
+    } else {
+      fail_count++;
+      const el = document.getElementById('batch-result-' + res.id);
+      if (el) el.innerHTML = `<div class="batch-result-error">HubSpot failed: ${res.error || 'unknown'}</div>`;
+    }
+  });
+
+  if (ok_count > 0 && fail_count === 0) {
+    showToast(`${ok_count} prospect${ok_count !== 1 ? 's' : ''} confirmed and pushed to HubSpot`);
+  } else if (ok_count > 0) {
+    showToast(`${ok_count} confirmed, ${fail_count} failed — see cards above`, '#EF9F27');
+  } else {
+    showToast('All HubSpot pushes failed — check /admin for error details', '#D85A30');
+  }
+
+  btn.disabled = false;
+  updateBatchCount();
+}
+
+// ── Single approve ────────────────────────────────────────────────────────────
+async function approve(id) {
+  const msg = document.getElementById('msg-' + id).value;
+  const btn = document.querySelector(`#card-${id} .btn-approve`);
+  if (btn) { btn.textContent = 'Pushing...'; btn.disabled = true; }
+  const r    = await fetch('/approve/' + id, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({message: msg}),
+  });
+  const data = await r.json();
+  if (data.ok) {
+    document.getElementById('card-' + id).style.opacity = '.3';
+    setTimeout(() => document.getElementById('card-' + id).remove(), 400);
+    showToast('Approved — HubSpot contact & deal created');
+  } else {
+    if (btn) { btn.textContent = 'Approve & add to queue'; btn.disabled = false; }
+    showToast('HubSpot push failed: ' + (data.error || 'unknown'), '#D85A30');
+  }
+}
+
+async function retryHs(id) {
+  const btn = document.querySelector(`#card-${id} .btn-retry`);
+  if (btn) { btn.textContent = 'Retrying...'; btn.disabled = true; }
+  const r    = await fetch('/retry_hs/' + id, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  const data = await r.json();
+  if (data.ok) {
+    showToast('HubSpot push succeeded');
+    setTimeout(() => location.reload(), 1000);
+  } else {
+    if (btn) { btn.textContent = 'Retry HubSpot push'; btn.disabled = false; }
+    showToast('Still failing: ' + (data.error || 'unknown'), '#D85A30');
+  }
+}
+
+async function skip(id) {
+  const r = await fetch('/skip/' + id, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  if ((await r.json()).ok) {
+    document.getElementById('card-' + id).style.opacity = '.3';
+    setTimeout(() => document.getElementById('card-' + id).remove(), 400);
+    showToast('Skipped', '#555');
+  }
+}
+
+async function markSent(id) {
+  const msg = document.getElementById('msg-' + id).value;
+  const r   = await fetch('/mark_sent/' + id, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({message: msg}),
+  });
+  if ((await r.json()).ok) {
+    document.getElementById('card-' + id).style.opacity = '.3';
+    setTimeout(() => document.getElementById('card-' + id).remove(), 400);
+    showToast('Marked as sent');
+  }
+}
+
+async function generateBrief(id) {
+  const btn = document.getElementById('brief-btn-' + id);
+  if (btn) { btn.textContent = 'Generating...'; btn.disabled = true; }
+  const r    = await fetch('/generate-brief/' + id, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  const data = await r.json();
+  if (data.ok) {
+    const hasHsError = data.hs_error && !data.hs_error.includes('No hs_deal_id');
+    showToast(
+      hasHsError
+        ? 'Brief saved — HubSpot note failed: ' + data.hs_error
+        : data.note_id
+          ? 'Pre-call brief generated & posted to HubSpot'
+          : 'Pre-call brief saved to prospect record',
+      hasHsError ? '#EF9F27' : undefined
+    );
+    if (btn) { btn.textContent = 'Regenerate brief'; btn.disabled = false; }
+  } else {
+    if (btn) { btn.textContent = 'Generate brief'; btn.disabled = false; }
+    showToast('Brief failed: ' + (data.error || 'unknown'), '#D85A30');
+  }
+}
+
+// ── Single approve from batch confirm view ────────────────────────────────────
+async function approveSingle(id) {
+  const msg = document.getElementById('msg-' + id).value;
+  const btn = document.querySelector(`#card-${id} .btn-approve`);
+  if (btn) { btn.textContent = 'Pushing...'; btn.disabled = true; }
+  const r    = await fetch('/approve/' + id, {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({message: msg}),
+  });
+  const data = await r.json();
+  if (data.ok) {
+    document.getElementById('card-' + id).style.opacity = '.3';
+    setTimeout(() => document.getElementById('card-' + id).remove(), 400);
+    updateBatchCount();
+    showToast('Approved — HubSpot contact & deal created');
+  } else {
+    if (btn) { btn.textContent = 'Approve'; btn.disabled = false; }
+    const el = document.getElementById('batch-result-' + id);
+    if (el) el.innerHTML = `<div class="batch-result-error">HubSpot failed: ${data.error || 'unknown'}</div>`;
+    showToast('HubSpot push failed: ' + (data.error || 'unknown'), '#D85A30');
+  }
+}
+
+async function runHunter() {
+  const btn = document.getElementById('run-btn');
+  if (btn) { btn.textContent = 'Starting scan...'; btn.disabled = true; }
+  const r    = await fetch('/admin/run-now', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  const data = await r.json();
+  if (data.ok) {
+    showToast('Scan started — results will appear after the run completes');
+    setTimeout(() => { if (btn) { btn.textContent = 'Run scan now'; btn.disabled = false; }}, 3000);
+  } else {
+    if (btn) { btn.textContent = 'Run scan now'; btn.disabled = false; }
+    showToast(data.message || 'Could not start scan', '#D85A30');
+  }
+}
+</script>
+</body>
+</html>

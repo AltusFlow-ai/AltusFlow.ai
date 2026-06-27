@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AltusFlow — Sign In</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e4e4e4;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.wrap{width:100%;max-width:380px}
+.logo{text-align:center;margin-bottom:36px}
+.logo-mark{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;background:#0d2a1e;border:1px solid #1D9E75;border-radius:12px;margin-bottom:14px}
+.logo-mark svg{width:22px;height:22px;color:#1D9E75}
+.logo-name{font-size:18px;font-weight:600;color:#fff;letter-spacing:.04em}
+.logo-name span{color:#1D9E75}
+.logo-sub{font-size:12px;color:#555;margin-top:4px;letter-spacing:.04em}
+.card{background:#111;border:1px solid #1e1e1e;border-radius:14px;padding:28px 28px 32px}
+.card-title{font-size:15px;font-weight:600;color:#fff;margin-bottom:22px}
+.error-box{background:#1a0808;border:1px solid #3d1212;border-radius:8px;padding:10px 14px;font-size:13px;color:#D85A30;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.error-box svg{width:14px;height:14px;flex-shrink:0}
+.field{margin-bottom:18px}
+.field:last-of-type{margin-bottom:22px}
+.field label{display:block;font-size:11px;font-weight:600;color:#666;letter-spacing:.08em;text-transform:uppercase;margin-bottom:7px}
+.field input{width:100%;background:#0d0d0d;border:1px solid #252525;border-radius:8px;padding:11px 13px;font-size:14px;color:#e4e4e4;outline:none;transition:border-color .2s,box-shadow .2s}
+.field input::placeholder{color:#3a3a3a}
+.field input:focus{border-color:#1D9E75;box-shadow:0 0 0 3px rgba(29,158,117,.12)}
+.btn-submit{width:100%;background:#1D9E75;color:#fff;border:none;border-radius:8px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .15s,transform .1s;letter-spacing:.02em}
+.btn-submit:hover{opacity:.88}
+.btn-submit:active{transform:scale(.99)}
+.footer{text-align:center;margin-top:20px;font-size:11px;color:#333}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <div class="logo-mark">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
+      </svg>
+    </div>
+    <p class="logo-name">AltusFlow<span>.ai</span></p>
+    <p class="logo-sub">Outbound Hunter Platform</p>
+  </div>
+
+  <div class="card">
+    <p class="card-title">Sign in to your account</p>
+
+    {% if error %}
+    <div class="error-box">
+      <svg fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" /></svg>
+      {{ error }}
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('auth.login') }}{% if request.args.get('next') %}?next={{ request.args.get('next') }}{% endif %}">
+      <div class="field">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="you@company.com" required autofocus autocomplete="email" />
+      </div>
+      <div class="field">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password" />
+      </div>
+      <button type="submit" class="btn-submit">Sign In &rarr;</button>
+    </form>
+  </div>
+
+  <p class="footer">&copy; 2026 AltusFlow.ai &mdash; <a href="mailto:hello@altusflow.ai" style="color:#444;text-decoration:none">hello@altusflow.ai</a></p>
+</div>
+</body>
+</html>

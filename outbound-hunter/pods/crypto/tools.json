@@ -1,0 +1,53 @@
+{
+  "pod_slug": "crypto",
+  "allowed_tools": [
+    {
+      "name": "reddit_api",
+      "library": "praw",
+      "version": "free_tier",
+      "rate_limit": "60_per_minute",
+      "data_retained": "reddit_username, post_text, subreddit, post_url",
+      "pii_handling": "username stored, outreach via Reddit DM UI only"
+    },
+    {
+      "name": "apify_twitter",
+      "actor": "apify/twitter-scraper",
+      "version": "stable",
+      "rate_limit": "10_per_hour",
+      "data_retained": "handle, tweet_text, profile_url",
+      "pii_handling": "stored in tenant DB only",
+      "note": "Primary platform for crypto — crypto Twitter is the main community"
+    },
+    {
+      "name": "apify_facebook",
+      "actor": "apify/facebook-groups-scraper",
+      "version": "stable",
+      "rate_limit": "10_per_hour",
+      "data_retained": "handle, post_text, group_name, profile_url",
+      "pii_handling": "stored in tenant DB only"
+    },
+    {
+      "name": "claude_api",
+      "model": "claude-haiku-4-5-20251001",
+      "max_tokens_per_call": 400,
+      "use_cases": ["DM suggestion (Hermes)", "sentiment shift analysis"],
+      "sdk": "none — direct HTTP POST via urllib.request"
+    },
+    {
+      "name": "claude_api_sonnet",
+      "model": "claude-sonnet-4-6",
+      "max_tokens_per_call": 1200,
+      "use_cases": ["value post generation", "pre-call briefs"],
+      "sdk": "none — direct HTTP POST via urllib.request"
+    }
+  ],
+  "forbidden_tools": [
+    "direct_email_send",
+    "auto_reddit_dm",
+    "auto_twitter_dm",
+    "on_chain_data_access",
+    "any_tool_not_listed_above",
+    "direct_crm_call_from_pod"
+  ],
+  "token_storage": "Fernet AES-256 encrypted in platform_connections table"
+}

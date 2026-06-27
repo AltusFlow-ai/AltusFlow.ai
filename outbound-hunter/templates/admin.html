@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AltusFlow — Admin</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e4e4e4;min-height:100vh}
+.topbar{background:#111;border-bottom:1px solid #222;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.logo{font-size:14px;font-weight:600;color:#fff;letter-spacing:.06em}
+.logo span{color:#1D9E75}
+.topbar-right{display:flex;align-items:center;gap:16px}
+.alert-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:#2a0f0f;border:1px solid #D85A30;border-radius:20px;font-size:12px;color:#D85A30;cursor:pointer;text-decoration:none}
+.alert-badge .dot{width:7px;height:7px;border-radius:50%;background:#D85A30}
+.tabs{display:flex;gap:2px;padding:16px 24px 0}
+.tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:13px;cursor:pointer;border:none;background:transparent;color:#666;text-decoration:none;display:inline-block}
+.tab:hover{color:#aaa}
+.tab.active{background:#111;color:#fff;border:1px solid #222;border-bottom-color:#111}
+.tab.batch{color:#1D9E75}
+.main{padding:20px 24px;max-width:900px}
+.section-title{font-size:11px;font-weight:600;color:#555;letter-spacing:.1em;margin-bottom:12px}
+.card{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:20px 22px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;color:#fff;margin-bottom:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:10px;flex-wrap:wrap}
+.row:last-child{margin-bottom:0}
+.field-label{font-size:12px;color:#666}
+.field-value{font-size:13px;color:#e4e4e4;font-weight:500}
+.field-value.green{color:#1D9E75}
+.field-value.yellow{color:#EF9F27}
+.field-value.red{color:#D85A30}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:500}
+.pill-running{background:#0f2a1e;color:#1D9E75;border:1px solid #1D9E75}
+.pill-idle{background:#1a1a1a;color:#666;border:1px solid #2a2a2a}
+.pill-paused{background:#2a1f0f;color:#EF9F27;border:1px solid #EF9F27}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;padding-top:16px;border-top:1px solid #1e1e1e}
+.btn{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s}
+.btn:hover{opacity:.8}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:#1D9E75;color:#fff}
+.btn-danger{background:transparent;color:#D85A30;border:1px solid #D85A30}
+.btn-muted{background:transparent;color:#666;border:1px solid #2a2a2a}
+.btn-muted:hover{color:#aaa;border-color:#444}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:12px}
+.stat-box{background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:12px;text-align:center}
+.stat-n{font-size:22px;font-weight:600;color:#fff}
+.stat-n.green{color:#1D9E75}
+.stat-n.yellow{color:#EF9F27}
+.stat-l{font-size:10px;color:#555;letter-spacing:.08em;margin-top:3px}
+.notif-list{list-style:none}
+.notif-item{display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid #161616}
+.notif-item:last-child{border-bottom:none}
+.notif-sev{font-size:10px;padding:2px 7px;border-radius:8px;font-weight:600;flex-shrink:0;margin-top:2px}
+.sev-critical{background:#2a0f0f;color:#D85A30}
+.sev-warning{background:#2a1f0f;color:#EF9F27}
+.sev-info{background:#0f1a2a;color:#5b9bd5}
+.notif-body{flex:1;min-width:0}
+.notif-title{font-size:13px;color:#e4e4e4;font-weight:500}
+.notif-detail{font-size:11px;color:#555;margin-top:3px;line-height:1.5}
+.notif-fix{font-size:11px;color:#1D9E75;margin-top:4px;line-height:1.5}
+.notif-meta{font-size:10px;color:#444;margin-top:4px}
+.notif-ack{font-size:11px;color:#444;cursor:pointer;padding:3px 8px;border:1px solid #2a2a2a;border-radius:6px;background:transparent;flex-shrink:0}
+.notif-ack:hover{color:#aaa;border-color:#444}
+.notif-acked{font-size:10px;color:#333;flex-shrink:0;padding:3px 8px}
+.ack-all-row{display:flex;justify-content:flex-end;margin-bottom:10px}
+.empty{color:#444;font-size:13px;padding:20px 0;text-align:center}
+.toast{position:fixed;bottom:24px;right:24px;background:#1D9E75;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:100}
+.toast.show{opacity:1}
+.niche-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-top:4px}
+.niche-card{background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:12px 14px}
+.niche-card.paused{border-color:#EF9F27}
+.niche-name{font-size:12px;font-weight:600;color:#e4e4e4;margin-bottom:4px}
+.niche-status{font-size:10px;color:#555;margin-bottom:10px}
+.niche-status.paused{color:#EF9F27}
+.btn-sm{padding:5px 12px;border-radius:6px;font-size:11px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s}
+.btn-sm:hover{opacity:.8}
+.btn-sm-pause{background:transparent;color:#D85A30;border:1px solid #D85A30}
+.btn-sm-resume{background:#1D9E75;color:#fff}
+.reg-header{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:4px 0 6px;border-bottom:1px solid #222;font-size:10px;color:#555;letter-spacing:.06em}
+.reg-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;padding:7px 0;border-bottom:1px solid #161616;align-items:center;font-size:12px}
+.reg-row:last-child{border-bottom:none}
+.reg-niche{color:#8b7cf6}
+.reg-num{text-align:right;color:#e4e4e4}
+.reg-cool{text-align:right;color:#EF9F27}
+.plat-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+.plat-table th{color:#555;font-weight:500;text-align:left;padding:6px 8px;border-bottom:1px solid #1e1e1e;font-size:10px;letter-spacing:.06em}
+.plat-table td{padding:7px 8px;border-bottom:1px solid #161616;color:#e4e4e4}
+.plat-table tr:last-child td{border-bottom:none}
+.plat-badge{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:500}
+.plat-li{background:#112038;color:#0a66c2}
+.plat-fb{background:#0f1a2a;color:#4267B2}
+.plat-rd{background:#1a1420;color:#ff4500}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">ALTUS<span>FLOW</span> &nbsp;·&nbsp; Admin</div>
+  <div class="topbar-right">
+    {% if alert_count > 0 %}
+    <a href="/admin" class="alert-badge"><span class="dot"></span>{{ alert_count }} alert{{ 's' if alert_count != 1 }}</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="/" class="tab">Pending review ({{ stats.pending }})</a>
+  <a href="/batch-confirm" class="tab batch">One-click confirm ({{ stats.auto_approved }})</a>
+  <a href="/approved" class="tab">Approved queue ({{ stats.approved }})</a>
+  <a href="/admin" class="tab active">Admin</a>
+</div>
+
+<div class="main">
+
+  <!-- ── Scheduler card ────────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Scheduler</div>
+
+    <div class="row">
+      <span class="field-label">Status</span>
+      {% if sched.is_running %}
+      <span class="pill pill-running"><span class="pill-dot"></span>Running now</span>
+      {% elif sched.is_paused %}
+      <span class="pill pill-paused"><span class="pill-dot"></span>Paused</span>
+      {% elif sched.scheduler_alive %}
+      <span class="pill pill-idle"><span class="pill-dot"></span>Idle — waiting for next run</span>
+      {% else %}
+      <span class="pill pill-paused">Scheduler offline</span>
+      {% endif %}
+    </div>
+
+    <div class="row">
+      <span class="field-label">Schedule</span>
+      <span class="field-value">{{ sched.cron_schedule }}</span>
+    </div>
+
+    {% if sched.next_run %}
+    <div class="row">
+      <span class="field-label">Next run</span>
+      <span class="field-value green">{{ sched.next_run }}</span>
+    </div>
+    {% endif %}
+
+    {% if sched.is_paused and sched.paused_reason %}
+    <div class="row">
+      <span class="field-label">Pause reason</span>
+      <span class="field-value yellow">{{ sched.paused_reason }}</span>
+    </div>
+    {% endif %}
+
+    {% if sched.is_paused and sched.paused_at %}
+    <div class="row">
+      <span class="field-label">Paused at</span>
+      <span class="field-value">{{ sched.paused_at }}</span>
+    </div>
+    {% endif %}
+
+    <div class="actions">
+      <button class="btn btn-primary" id="run-now-btn" onclick="runNow()"
+              {% if sched.is_running %}disabled{% endif %}>
+        {{ 'Scan in progress...' if sched.is_running else 'Run scan now' }}
+      </button>
+      {% if sched.is_paused %}
+      <button class="btn btn-muted" onclick="resumeScheduler()">Resume scheduler</button>
+      {% else %}
+      <button class="btn btn-danger" onclick="pauseScheduler()">Pause scheduler</button>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- ── Stats card ─────────────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Pipeline stats</div>
+    <div class="stats-grid">
+      <div class="stat-box"><div class="stat-n green">{{ stats.auto_approved }}</div><div class="stat-l">TO CONFIRM</div></div>
+      <div class="stat-box"><div class="stat-n yellow">{{ stats.pending }}</div><div class="stat-l">PENDING REVIEW</div></div>
+      <div class="stat-box"><div class="stat-n">{{ stats.approved }}</div><div class="stat-l">APPROVED</div></div>
+      <div class="stat-box"><div class="stat-n">{{ stats.sent }}</div><div class="stat-l">SENT</div></div>
+      <div class="stat-box"><div class="stat-n">{{ stats.auto_skipped }}</div><div class="stat-l">AUTO-SKIPPED</div></div>
+      <div class="stat-box"><div class="stat-n">{{ stats.total }}</div><div class="stat-l">TOTAL</div></div>
+      <div class="stat-box"><div class="stat-n">{{ stats.search_runs }}</div><div class="stat-l">SCAN RUNS</div></div>
+    </div>
+  </div>
+
+  <!-- ── Niche agents ──────────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Niche agents</div>
+    {% if niches %}
+    <div class="niche-grid">
+      {% for n in niches %}
+      {% set np = niche_pause_states.get(n, {}) %}
+      {% set is_paused = np.get('paused', false) %}
+      <div class="niche-card {% if is_paused %}paused{% endif %}" id="niche-{{ n }}">
+        <div class="niche-name">{{ n.replace('-',' ').title() }}</div>
+        <div class="niche-status {% if is_paused %}paused{% endif %}">
+          {% if is_paused %}Paused{% if np.get('reason') %} — {{ np.reason[:30] }}{% endif %}
+          {% else %}Active{% if niche_counts.get(n) %} · {{ niche_counts[n] }} actionable{% endif %}
+          {% endif %}
+        </div>
+        {% if is_paused %}
+        <button class="btn-sm btn-sm-resume" onclick="resumeNiche('{{ n }}')">Resume</button>
+        {% else %}
+        <button class="btn-sm btn-sm-pause" onclick="pauseNiche('{{ n }}')">Pause</button>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">No niches found — run a scan to populate.</div>
+    {% endif %}
+  </div>
+
+  <!-- ── Global registry ────────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Global registry — 90-day cooldowns</div>
+    <div class="row"><span class="field-label">Total tracked handles</span><span class="field-value">{{ registry_stats.total }}</span></div>
+    <div class="row" style="margin-bottom:16px"><span class="field-label">Active cooldowns</span><span class="field-value yellow">{{ registry_stats.active_cooldowns }}</span></div>
+    {% if registry_stats.by_niche %}
+    <div class="reg-header"><span>Niche</span><span>Total</span><span>Cooling</span></div>
+    {% for row in registry_stats.by_niche %}
+    <div class="reg-row">
+      <span class="reg-niche">{{ (row.niche_segment or 'unknown').replace('-',' ').title() }}</span>
+      <span class="reg-num">{{ row.total }}</span>
+      <span class="reg-cool">{{ row.on_cooldown }}</span>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty" style="padding:12px 0">Registry empty — no contacts tracked yet.</div>
+    {% endif %}
+  </div>
+
+  <!-- ── Platform performance ───────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">Platform performance — last 7 days</div>
+    {% if platform_stats %}
+    <table class="plat-table">
+      <thead>
+        <tr><th>Platform</th><th>Niche</th><th>Found</th><th>Qualified</th><th>Avg ICP</th></tr>
+      </thead>
+      <tbody>
+        {% for row in platform_stats %}
+        <tr>
+          <td><span class="plat-badge {% if row.platform == 'linkedin' %}plat-li{% elif row.platform == 'facebook' %}plat-fb{% else %}plat-rd{% endif %}">{{ row.platform }}</span></td>
+          <td>{{ (row.niche_segment or '—').replace('-',' ').title() }}</td>
+          <td>{{ row.total_found }}</td>
+          <td>{{ row.total_qualified }}</td>
+          <td>{{ "%.1f"|format(row.avg_icp or 0) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty">No platform data yet — run a scan to populate.</div>
+    {% endif %}
+  </div>
+
+  <!-- ── Notifications card ─────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-title">
+      Recent alerts
+      {% if stats.unread_alerts > 0 %}&nbsp;<span style="font-size:11px;color:#D85A30">({{ stats.unread_alerts }} unread)</span>{% endif %}
+    </div>
+
+    {% if notifications %}
+    {% set unacked = notifications | selectattr('acknowledged_at', 'none') | list %}
+    {% if unacked %}
+    <div class="ack-all-row">
+      <button class="btn btn-muted" style="font-size:11px;padding:5px 12px" onclick="acknowledgeAll()">
+        Acknowledge all
+      </button>
+    </div>
+    {% endif %}
+
+    <ul class="notif-list" id="notif-list">
+      {% for n in notifications %}
+      <li class="notif-item" id="notif-{{ n.id }}">
+        <span class="notif-sev sev-{{ n.severity }}">{{ n.severity.upper() }}</span>
+        <div class="notif-body">
+          <div class="notif-title">{{ n.title }}</div>
+          {% if n.body %}<div class="notif-detail">{{ n.body }}</div>{% endif %}
+          {% if n.suggested_fix %}<div class="notif-fix">Fix: {{ n.suggested_fix }}</div>{% endif %}
+          <div class="notif-meta">{{ n.created_at }}{% if n.run_id %} &nbsp;·&nbsp; run #{{ n.run_id }}{% endif %}</div>
+        </div>
+        {% if not n.acknowledged_at %}
+        <button class="notif-ack" onclick="acknowledge({{ n.id }})">Dismiss</button>
+        {% else %}
+        <span class="notif-acked">Dismissed</span>
+        {% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty">No alerts — system is running cleanly.</div>
+    {% endif %}
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+function showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || '#1D9E75';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+async function runNow() {
+  const btn = document.getElementById('run-now-btn');
+  btn.disabled = true;
+  btn.textContent = 'Starting...';
+  const r    = await fetch('/admin/run-now', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  const data = await r.json();
+  if (data.ok) {
+    showToast('Scan started in background');
+    btn.textContent = 'Scan in progress...';
+    setTimeout(() => { btn.textContent = 'Run scan now'; btn.disabled = false; }, 5000);
+  } else {
+    showToast(data.message || 'Could not start scan', '#D85A30');
+    btn.textContent = 'Run scan now';
+    btn.disabled = false;
+  }
+}
+
+async function pauseScheduler() {
+  const reason = prompt('Pause reason (optional):') || 'Manually paused by admin';
+  if (reason === null) return;  // user hit Cancel
+  const r = await fetch('/admin/pause', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({reason})
+  });
+  if ((await r.json()).ok) { showToast('Scheduler paused', '#EF9F27'); setTimeout(() => location.reload(), 800); }
+}
+
+async function resumeScheduler() {
+  const r = await fetch('/admin/resume', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  if ((await r.json()).ok) { showToast('Scheduler resumed'); setTimeout(() => location.reload(), 800); }
+}
+
+async function acknowledge(id) {
+  const r = await fetch('/acknowledge/' + id, {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  if ((await r.json()).ok) {
+    const el = document.querySelector(`#notif-${id} .notif-ack`);
+    if (el) { el.outerHTML = '<span class="notif-acked">Dismissed</span>'; }
+  }
+}
+
+async function pauseNiche(slug) {
+  const reason = prompt(`Pause reason for ${slug} (optional):`) || 'Paused from admin UI';
+  if (reason === null) return;
+  const r = await fetch(`/admin/niche/${slug}/pause`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({reason})
+  });
+  if ((await r.json()).ok) { showToast(`${slug} paused`, '#EF9F27'); setTimeout(() => location.reload(), 800); }
+}
+
+async function resumeNiche(slug) {
+  const r = await fetch(`/admin/niche/${slug}/resume`, {
+    method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'
+  });
+  if ((await r.json()).ok) { showToast(`${slug} resumed`); setTimeout(() => location.reload(), 800); }
+}
+
+async function acknowledgeAll() {
+  const r = await fetch('/acknowledge-all', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+  if ((await r.json()).ok) {
+    document.querySelectorAll('.notif-ack').forEach(el => {
+      el.outerHTML = '<span class="notif-acked">Dismissed</span>';
+    });
+    showToast('All alerts dismissed');
+  }
+}
+</script>
+</body>
+</html>

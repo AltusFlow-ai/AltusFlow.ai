@@ -1,0 +1,35 @@
+{
+  "pod_slug": "commercial-real-estate",
+  "schedule": "0 8 * * *",
+  "max_approvals_per_run": 30,
+  "min_score_to_qualify": 4,
+  "auto_approve_above": 9.0,
+  "platforms_priority": ["linkedin", "facebook", "reddit"],
+  "subreddits": [
+    "CommercialRealEstate",
+    "realestateinvesting",
+    "smallbusiness",
+    "Entrepreneur",
+    "realestate"
+  ],
+  "facebook_groups": [
+    "Commercial Real Estate Professionals",
+    "CRE Brokers Network",
+    "Real Estate Investors and Operators",
+    "Business Real Estate Decisions"
+  ],
+  "linkedin_search_queries": [
+    "commercial real estate broker deal flow",
+    "cre business development",
+    "lease expiring commercial space",
+    "1031 exchange advice",
+    "commercial property investment"
+  ],
+  "prospect_types": ["cre_broker", "transaction_prospect"],
+  "abort_if": [
+    "residential_real_estate_no_commercial_context",
+    "apartment_hunting",
+    "home_buyer_content"
+  ],
+  "notes": "LinkedIn primary for both CRE brokers (BD pain) and business owners facing transaction decisions. Reddit/CRE has deep transaction-signal conversations. Salvage posts with 2+ commercial keywords even if residential language appears."
+}

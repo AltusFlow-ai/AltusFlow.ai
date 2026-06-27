@@ -1,0 +1,55 @@
+{
+  "pod_slug": "futures",
+  "tasks": [
+    {
+      "id": "daily_scan",
+      "name": "Daily futures trader prospect scan",
+      "schedule": "0 7 * * 1-5",
+      "description": "Scan Reddit and X pre-market for futures traders posting overnight loss and pre-session frustration signals",
+      "acceptance_criteria": [
+        "At least 1 platform scanned successfully",
+        "All results pass pre_flight_check",
+        "No PII transmitted without hashing",
+        "Status report written within 60 seconds",
+        "scan_runs row marked complete"
+      ],
+      "on_failure": "alert_admin",
+      "max_retries": 2,
+      "retry_delay_minutes": 30,
+      "circuit_breaker_threshold": 3
+    },
+    {
+      "id": "post_session_scan",
+      "name": "Post-session prop failure scan",
+      "schedule": "0 16 * * 1-5",
+      "description": "Scan for end-of-day prop firm failure posts and account blowup reports",
+      "acceptance_criteria": [
+        "Reddit scanned for prop firm failure keywords",
+        "New prospects merged without duplicates"
+      ],
+      "on_failure": "log_warning",
+      "max_retries": 1,
+      "retry_delay_minutes": 60
+    },
+    {
+      "id": "calendly_poll",
+      "name": "Calendly booking poll",
+      "schedule": "*/15 * * * *",
+      "description": "Poll Calendly for new discovery call bookings",
+      "acceptance_criteria": [
+        "New bookings matched within 15 minutes",
+        "Deal stage updated via EventDispatcher only",
+        "Pre-call brief generated",
+        "No double-processing"
+      ],
+      "on_failure": "log_warning",
+      "max_retries": 3,
+      "retry_delay_minutes": 5
+    }
+  ],
+  "global_limits": {
+    "max_prospects_per_run": 50,
+    "max_apify_calls_per_hour": 10,
+    "max_claude_calls_per_run": 100
+  }
+}

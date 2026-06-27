@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AltusFlow — Pod Factory</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e4e4e4;min-height:100vh}
+.topbar{background:#111;border-bottom:1px solid #222;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.logo{font-size:14px;font-weight:600;color:#fff;letter-spacing:.06em}
+.logo span{color:#1D9E75}
+.topbar-right{display:flex;align-items:center;gap:16px;font-size:12px;color:#555}
+.topbar-right a{color:#888;text-decoration:none}
+.topbar-right a:hover{color:#fff}
+.tabs{display:flex;gap:2px;padding:16px 24px 0}
+.tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:13px;cursor:pointer;border:none;background:transparent;color:#666;text-decoration:none;display:inline-block}
+.tab:hover{color:#aaa}
+.tab.active{background:#111;color:#fff;border:1px solid #222;border-bottom-color:#111}
+.main{padding:24px;max-width:1000px}
+.page-title{font-size:18px;font-weight:600;color:#fff;margin-bottom:4px}
+.page-sub{font-size:12px;color:#555;margin-bottom:24px}
+.section-title{font-size:11px;font-weight:600;color:#555;letter-spacing:.1em;margin-bottom:12px;text-transform:uppercase}
+.card{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:20px 22px;margin-bottom:16px}
+/* Status badges */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600}
+.badge-ok{background:#0f2a1e;color:#1D9E75;border:1px solid #1D9E75}
+.badge-paused{background:#2a1f0f;color:#EF9F27;border:1px solid #EF9F27}
+.badge-error{background:#2a0f0f;color:#D85A30;border:1px solid #D85A30}
+.badge-cb{background:#2a0f1f;color:#c45fd8;border:1px solid #c45fd8}
+.badge-idle{background:#1a1a1a;color:#666;border:1px solid #2a2a2a}
+.badge-cost{background:#0a1a2a;color:#4ea8de;border:1px solid #4ea8de}
+.badge-dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+/* Pod list */
+.pod-grid{display:grid;gap:12px}
+.pod-row{background:#111;border:1px solid #1e1e1e;border-radius:10px;padding:18px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.pod-row.cb-open{border-color:#c45fd8}
+.pod-row.paused{border-color:#EF9F27}
+.pod-name{font-size:14px;font-weight:600;color:#fff;flex:1 1 160px}
+.pod-slug{font-size:11px;color:#444;margin-top:2px;font-family:monospace}
+.pod-stats{display:flex;gap:16px;flex:1 1 240px;flex-wrap:wrap}
+.stat-item{text-align:center}
+.stat-n{font-size:18px;font-weight:600;color:#fff}
+.stat-n.green{color:#1D9E75}
+.stat-n.yellow{color:#EF9F27}
+.stat-l{font-size:10px;color:#444;margin-top:2px;letter-spacing:.06em}
+.pod-meta{font-size:11px;color:#555;flex:1 1 160px}
+.pod-meta span{display:block;margin-bottom:3px}
+.pod-actions{display:flex;gap:8px;flex-wrap:wrap}
+/* Buttons */
+.btn{padding:7px 14px;border-radius:7px;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s;text-decoration:none;display:inline-block}
+.btn:hover{opacity:.8}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:#1D9E75;color:#fff}
+.btn-warn{background:transparent;color:#EF9F27;border:1px solid #EF9F27}
+.btn-danger{background:transparent;color:#D85A30;border:1px solid #D85A30}
+.btn-muted{background:transparent;color:#666;border:1px solid #2a2a2a}
+.btn-muted:hover{color:#aaa;border-color:#444}
+.btn-reset{background:transparent;color:#c45fd8;border:1px solid #c45fd8}
+.btn-sm{padding:5px 10px;font-size:11px}
+/* Detail view */
+.detail-header{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.detail-title{flex:1}
+.metrics-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:20px}
+.metric-box{background:#0d0d0d;border:1px solid #1e1e1e;border-radius:8px;padding:12px;text-align:center}
+.metric-n{font-size:20px;font-weight:600;color:#fff}
+.metric-l{font-size:10px;color:#444;margin-top:3px;letter-spacing:.06em}
+/* Run history table */
+.history-table{width:100%;border-collapse:collapse;font-size:12px}
+.history-table th{text-align:left;color:#555;font-size:10px;letter-spacing:.08em;padding:8px 10px;border-bottom:1px solid #1e1e1e;font-weight:600;text-transform:uppercase}
+.history-table td{padding:9px 10px;border-bottom:1px solid #111;color:#aaa;vertical-align:top}
+.history-table tr:last-child td{border-bottom:none}
+.history-table tr:hover td{background:#0d0d0d}
+.err-detail{font-size:10px;color:#666;font-family:monospace;word-break:break-all;margin-top:3px}
+/* Warning banner */
+.mode-banner{display:flex;align-items:center;gap:10px;background:#2a1f0f;border:1px solid #EF9F27;border-radius:8px;padding:12px 16px;font-size:12px;color:#EF9F27;margin-bottom:20px}
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1D9E75;color:#fff;padding:12px 18px;border-radius:9px;font-size:13px;font-weight:500;z-index:100;display:none;animation:fadein .2s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">Altus<span>Flow</span> &nbsp;·&nbsp; Pod Factory</div>
+  <div class="topbar-right">
+    {% if tenant_name %}<span>{{ tenant_name }}</span>{% endif %}
+    <a href="/admin">← Admin</a>
+    <a href="/auth/logout">Sign out</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <a class="tab" href="/">Review</a>
+  <a class="tab" href="/batch-confirm">Batch Confirm</a>
+  <a class="tab" href="/approved">Approved</a>
+  <a class="tab" href="/admin">Admin</a>
+  <a class="tab active" href="/admin/pods">Pods</a>
+  <a class="tab" href="/budget">Budget</a>
+  <a class="tab" href="/connections">Connections</a>
+</div>
+
+<div class="main">
+
+{% if not detail_view %}
+{# ── LIST VIEW ───────────────────────────────────────────────────────────── #}
+
+<div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+  <div>
+    <div class="page-title">Pod Factory</div>
+    <div class="page-sub" style="margin-bottom:0">{{ pods|length }} pod(s) registered · Orchestrator: {{ 'Active' if pod_mode else 'Inactive — set USE_POD_ORCHESTRATOR=true to enable scheduling' }}</div>
+  </div>
+  {% set any_cost_save = pods | selectattr('cost_save_mode') | list | length > 0 %}
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+    {% if any_cost_save %}
+      <span class="badge badge-cost" style="font-size:11px">💰 Cost Save Active</span>
+      <button class="btn btn-muted btn-sm" onclick="setGlobalCostSave(false)" title="Resume full scanning on all pods">Exit Cost Save (All)</button>
+    {% else %}
+      <button class="btn btn-sm" style="background:#0a1a2a;color:#4ea8de;border:1px solid #4ea8de" onclick="setGlobalCostSave(true)" title="Reddit-only scan across all pods. Saves ~80% of Apify costs.">💰 Cost Save Mode (All Pods)</button>
+    {% endif %}
+  </div>
+</div>
+
+{% if not pod_mode %}
+<div class="mode-banner">
+  ⚠ Orchestrator not active. Pods can be monitored here but won't run on schedule until
+  <code>USE_POD_ORCHESTRATOR=true</code> is set in your environment.
+</div>
+{% endif %}
+
+<div class="pod-grid">
+{% for pod in pods %}
+  {% set cb_open   = pod.circuit_breaker_open %}
+  {% set is_paused = pod.is_paused %}
+  {% set last_status = pod.last_status or pod.last_run_status or 'not_run' %}
+  <div class="pod-row {% if cb_open %}cb-open{% elif is_paused %}paused{% endif %}">
+
+    <div style="flex:0 0 auto">
+      <div class="pod-name">{{ pod.pod_label or pod.pod_slug }}</div>
+      <div class="pod-slug">{{ pod.pod_slug }}</div>
+      <div style="margin-top:8px">
+        {% if cb_open %}
+          <span class="badge badge-cb"><span class="badge-dot"></span> Circuit Open</span>
+        {% elif is_paused %}
+          <span class="badge badge-paused"><span class="badge-dot"></span> Paused</span>
+        {% elif last_status == 'ok' %}
+          <span class="badge badge-ok"><span class="badge-dot"></span> Running</span>
+        {% elif last_status in ('error', 'failed') %}
+          <span class="badge badge-error"><span class="badge-dot"></span> Error</span>
+        {% else %}
+          <span class="badge badge-idle"><span class="badge-dot"></span> {{ last_status|title }}</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="pod-stats">
+      <div class="stat-item">
+        <div class="stat-n {% if pod.total_prospects %}green{% endif %}">{{ pod.total_prospects or 0 }}</div>
+        <div class="stat-l">TOTAL FOUND</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-n">{{ pod.total_runs or 0 }}</div>
+        <div class="stat-l">RUNS</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-n {% if pod.consecutive_errors %}yellow{% endif %}">{{ pod.consecutive_errors or 0 }}</div>
+        <div class="stat-l">CONSEC. ERRORS</div>
+      </div>
+    </div>
+
+    <div class="pod-meta">
+      <span>Last run: {{ pod.last_run_at or 'Never' }}</span>
+      <span>Status: {{ last_status }}</span>
+      {% if pod.next_scheduled_run %}<span>Next: {{ pod.next_scheduled_run }}</span>{% endif %}
+      {% if is_paused and pod.pause_reason %}<span style="color:#EF9F27">Reason: {{ pod.pause_reason }}</span>{% endif %}
+    </div>
+
+    <div class="pod-actions">
+      <a class="btn btn-muted btn-sm" href="/admin/pods/{{ pod.pod_slug }}">Detail</a>
+      {% if pod_mode %}
+        {% if cb_open %}
+          <button class="btn btn-reset btn-sm" onclick="resetPod('{{ pod.pod_slug }}')">Reset CB</button>
+        {% elif is_paused %}
+          <button class="btn btn-primary btn-sm" onclick="resumePod('{{ pod.pod_slug }}')">Resume</button>
+        {% else %}
+          <button class="btn btn-warn btn-sm" onclick="pausePod('{{ pod.pod_slug }}')">Pause</button>
+          <button class="btn btn-primary btn-sm" onclick="runNow('{{ pod.pod_slug }}')">Run Now</button>
+        {% endif %}
+        {% if pod.cost_save_mode %}
+          <button class="btn btn-sm" style="background:#0a1a2a;color:#4ea8de;border:1px solid #4ea8de" onclick="toggleCostSave('{{ pod.pod_slug }}', false)" title="Exit Cost Save Mode — resume LinkedIn + Facebook scanning">💰 Exit Cost Save</button>
+        {% else %}
+          <button class="btn btn-muted btn-sm" onclick="toggleCostSave('{{ pod.pod_slug }}', true)" title="Reddit-only scan. Saves Apify credits.">💰 Cost Save</button>
+        {% endif %}
+      {% endif %}
+    </div>
+
+  </div>
+{% else %}
+  <div class="card" style="color:#555;text-align:center;padding:40px">
+    No pods registered. Run <code>python orchestrator.py</code> once to discover pods.
+  </div>
+{% endfor %}
+</div>
+
+{% else %}
+{# ── DETAIL VIEW ─────────────────────────────────────────────────────────── #}
+
+{% set cb_open   = pod.circuit_breaker_open %}
+{% set is_paused = pod.is_paused %}
+
+<div style="margin-bottom:12px"><a class="btn btn-muted btn-sm" href="/admin/pods">← All Pods</a></div>
+
+<div class="detail-header">
+  <div class="detail-title">
+    <div class="page-title">{{ pod.pod_label or pod.pod_slug }}</div>
+    <div class="page-sub" style="font-family:monospace">{{ pod.pod_slug }}</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      {% if cb_open %}
+        <span class="badge badge-cb"><span class="badge-dot"></span> Circuit Breaker OPEN</span>
+      {% elif is_paused %}
+        <span class="badge badge-paused"><span class="badge-dot"></span> Paused{% if pod.pause_reason %} — {{ pod.pause_reason }}{% endif %}</span>
+      {% else %}
+        <span class="badge badge-ok"><span class="badge-dot"></span> Active</span>
+      {% endif %}
+      {% if pod.cost_save_mode %}
+        <span class="badge badge-cost">💰 Cost Save Mode — Reddit only</span>
+      {% endif %}
+    </div>
+  </div>
+  <div class="pod-actions">
+    {% if cb_open %}
+      <button class="btn btn-reset" onclick="resetPod('{{ pod.pod_slug }}')">Reset Circuit Breaker</button>
+    {% elif is_paused %}
+      <button class="btn btn-primary" onclick="resumePod('{{ pod.pod_slug }}')">Resume Pod</button>
+    {% else %}
+      <button class="btn btn-warn" onclick="pausePod('{{ pod.pod_slug }}')">Pause Pod</button>
+      <button class="btn btn-primary" onclick="runNow('{{ pod.pod_slug }}')">Run Now</button>
+    {% endif %}
+    {% if pod.cost_save_mode %}
+      <button class="btn" style="background:#0a1a2a;color:#4ea8de;border:1px solid #4ea8de" onclick="toggleCostSave('{{ pod.pod_slug }}', false)" title="Resume full platform scanning (LinkedIn + Facebook + Reddit)">💰 Exit Cost Save</button>
+    {% else %}
+      <button class="btn btn-muted" onclick="toggleCostSave('{{ pod.pod_slug }}', true)" title="Reddit-only mode. Cuts Apify cost by ~80%.">💰 Cost Save Mode</button>
+    {% endif %}
+  </div>
+</div>
+
+<div class="section-title">Lifetime Metrics</div>
+<div class="metrics-grid">
+  <div class="metric-box"><div class="metric-n">{{ pod.total_runs or 0 }}</div><div class="metric-l">TOTAL RUNS</div></div>
+  <div class="metric-box"><div class="metric-n" style="color:#1D9E75">{{ pod.total_prospects or 0 }}</div><div class="metric-l">TOTAL FOUND</div></div>
+  <div class="metric-box"><div class="metric-n {% if pod.consecutive_errors %}style="color:#EF9F27"{% endif %}">{{ pod.consecutive_errors or 0 }}</div><div class="metric-l">CONSEC. ERRORS</div></div>
+  <div class="metric-box"><div class="metric-n">{{ '⚠' if cb_open else '✓' }}</div><div class="metric-l">CIRCUIT BREAKER</div></div>
+  <div class="metric-box"><div class="metric-n">{{ pod.last_run_at[:10] if pod.last_run_at else '—' }}</div><div class="metric-l">LAST RUN DATE</div></div>
+</div>
+
+<div class="section-title">Run History — Last 20</div>
+<div class="card" style="padding:0;overflow:hidden">
+  {% if history %}
+  <table class="history-table">
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Status</th>
+        <th>Found</th>
+        <th>Qual</th>
+        <th>Auto-OK</th>
+        <th>HS OK</th>
+        <th>HS Fail</th>
+        <th>Duration</th>
+        <th>Errors</th>
+      </tr>
+    </thead>
+    <tbody>
+    {% for run in history %}
+      <tr>
+        <td>{{ run.created_at[:16] if run.created_at else '—' }}</td>
+        <td>
+          {% if run.status == 'ok' %}
+            <span class="badge badge-ok" style="font-size:10px">ok</span>
+          {% elif run.status in ('error','failed','interrupted') %}
+            <span class="badge badge-error" style="font-size:10px">{{ run.status }}</span>
+          {% elif run.status == 'circuit_open' %}
+            <span class="badge badge-cb" style="font-size:10px">cb open</span>
+          {% else %}
+            <span class="badge badge-idle" style="font-size:10px">{{ run.status or '—' }}</span>
+          {% endif %}
+        </td>
+        <td>{{ run.prospects_found or 0 }}</td>
+        <td>{{ run.prospects_qualified or 0 }}</td>
+        <td>{{ run.auto_approved or 0 }}</td>
+        <td style="color:#1D9E75">{{ run.hs_pushes_ok or 0 }}</td>
+        <td style="color:#D85A30">{{ run.hs_pushes_failed or 0 }}</td>
+        <td>{{ run.duration_seconds or 0 }}s</td>
+        <td>
+          {% if run.errors and run.errors != '[]' %}
+            {% set err_list = run.errors | tojson if run.errors is string else run.errors %}
+            <span style="color:#D85A30">⚠</span>
+            <div class="err-detail">{{ run.errors[:120] }}{% if run.errors|length > 120 %}…{% endif %}</div>
+          {% else %}
+            <span style="color:#555">—</span>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="padding:32px;text-align:center;color:#555">No run history yet for this pod.</div>
+  {% endif %}
+</div>
+
+{% endif %}
+</div><!-- .main -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+function _showToast(msg, color) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.background = color || '#1D9E75';
+  t.style.display = 'block';
+  setTimeout(() => { t.style.display = 'none'; }, 3000);
+}
+
+async function _podAction(slug, action, body) {
+  try {
+    const r = await fetch(`/admin/pods/${slug}/${action}`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const data = await r.json();
+    if (data.ok || data.message) {
+      _showToast(data.message || `${action} OK`);
+      setTimeout(() => location.reload(), 1200);
+    } else {
+      _showToast(data.error || 'Error', '#D85A30');
+    }
+  } catch(e) {
+    _showToast('Network error', '#D85A30');
+  }
+}
+
+function pausePod(slug) {
+  const reason = prompt('Pause reason (optional):') || 'Paused via admin UI';
+  _podAction(slug, 'pause', {reason});
+}
+function resumePod(slug) { _podAction(slug, 'resume'); }
+function resetPod(slug) {
+  if (confirm(`Reset circuit breaker for "${slug}"?\n\nOnly do this after fixing the root cause.`)) {
+    _podAction(slug, 'reset');
+  }
+}
+function runNow(slug) { _podAction(slug, 'run-now'); }
+
+function toggleCostSave(slug, enable) {
+  const label = enable ? 'enable Cost Save Mode (Reddit only)' : 'exit Cost Save Mode (resume full scanning)';
+  if (!confirm(`${enable ? 'Enable' : 'Disable'} Cost Save Mode for "${slug}"?\n\n${enable ? 'This pod will scan Reddit only (free). LinkedIn and Facebook will be skipped.' : 'Full platform scanning (LinkedIn + Facebook + Reddit) will resume.'}`)) return;
+  fetch(`/admin/pods/${slug}/cost-save-mode`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({enabled: enable}),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) { _showToast(data.message, enable ? '#4ea8de' : '#1D9E75'); setTimeout(() => location.reload(), 1200); }
+    else { _showToast(data.error || 'Error', '#D85A30'); }
+  }).catch(() => _showToast('Network error', '#D85A30'));
+}
+
+function setGlobalCostSave(enable) {
+  const pods = {{ pods|length if pods else 0 }};
+  if (!confirm(`${enable ? 'Enable' : 'Disable'} Cost Save Mode for ALL ${pods} pods?\n\n${enable ? 'All pods will scan Reddit only (free). ~80% Apify cost reduction.' : 'All pods will resume full platform scanning.'}`)) return;
+  fetch('/admin/pods/cost-save-mode/global', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({enabled: enable}),
+  }).then(r => r.json()).then(data => {
+    if (data.ok) { _showToast(data.message, enable ? '#4ea8de' : '#1D9E75'); setTimeout(() => location.reload(), 1200); }
+    else { _showToast(data.error || 'Error', '#D85A30'); }
+  }).catch(() => _showToast('Network error', '#D85A30'));
+}
+</script>
+
+</body>
+</html>

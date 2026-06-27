@@ -1,0 +1,52 @@
+{
+  "pod_slug": "crypto",
+  "tasks": [
+    {
+      "id": "daily_scan",
+      "name": "Daily crypto trader prospect scan",
+      "schedule": "0 9 * * *",
+      "description": "Scan Reddit and X for crypto traders posting pain signals — market runs 24/7 so morning scan catches overnight activity",
+      "acceptance_criteria": [
+        "At least 1 platform scanned successfully",
+        "All results pass pre_flight_check",
+        "scan_runs row marked complete"
+      ],
+      "on_failure": "alert_admin",
+      "max_retries": 2,
+      "retry_delay_minutes": 30,
+      "circuit_breaker_threshold": 3
+    },
+    {
+      "id": "weekend_scan",
+      "name": "Weekend crypto community scan",
+      "schedule": "0 11 * * 6,0",
+      "description": "Crypto never sleeps — weekend scan for bear market venting and FOMO threads",
+      "acceptance_criteria": [
+        "Reddit and X scanned for weekend crypto pain",
+        "No duplicates from weekday scans"
+      ],
+      "on_failure": "log_warning",
+      "max_retries": 1,
+      "retry_delay_minutes": 120
+    },
+    {
+      "id": "calendly_poll",
+      "name": "Calendly booking poll",
+      "schedule": "*/15 * * * *",
+      "description": "Poll Calendly for new discovery call bookings",
+      "acceptance_criteria": [
+        "New bookings matched within 15 minutes",
+        "Pre-call brief generated",
+        "No double-processing"
+      ],
+      "on_failure": "log_warning",
+      "max_retries": 3,
+      "retry_delay_minutes": 5
+    }
+  ],
+  "global_limits": {
+    "max_prospects_per_run": 50,
+    "max_apify_calls_per_hour": 10,
+    "max_claude_calls_per_run": 100
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "pod_slug": "altusflow-own",
+  "scrapers": {
+    "linkedin": {
+      "enabled": true,
+      "priority": 1,
+      "rate_limit_per_hour": 10,
+      "actor": "apify/linkedin-post-search-scraper",
+      "notes": "Primary — professional service providers (FAs, coaches, recruiters, CRE, MSPs) are most active on LinkedIn"
+    },
+    "facebook": {
+      "enabled": true,
+      "priority": 2,
+      "rate_limit_per_hour": 15,
+      "actor": "apify/facebook-groups-scraper",
+      "notes": "Niche-specific Facebook groups across all 5 target verticals"
+    },
+    "reddit": {
+      "enabled": true,
+      "priority": 3,
+      "rate_limit_per_hour": 30,
+      "actor": "apify/reddit-scraper",
+      "notes": "r/msp, r/recruiting, r/CommercialRealEstate, r/Entrepreneur for cross-niche BD pain signals"
+    }
+  },
+  "outbound": {
+    "hubspot": {
+      "enabled": true,
+      "portal_id": 246530361,
+      "sequence_id": null,
+      "notes": "AltusFlow HubSpot portal 246530361. Always check existing contacts before qualifying. All pushes use client_id=ALT00."
+    },
+    "meta_ads": {
+      "enabled": false,
+      "notes": "Disabled — AltusFlow own prospecting is outbound-only, no paid ads"
+    },
+    "calendly": {
+      "enabled": true,
+      "notes": "Austin's direct discovery call link. Used in all approved messages for AltusFlow own pipeline."
+    }
+  }
+}

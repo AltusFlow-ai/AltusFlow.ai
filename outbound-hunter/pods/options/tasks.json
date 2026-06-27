@@ -1,0 +1,52 @@
+{
+  "pod_slug": "options",
+  "tasks": [
+    {
+      "id": "daily_scan",
+      "name": "Daily options trader prospect scan",
+      "schedule": "0 9 * * 1-5",
+      "description": "Scan Reddit and X for options traders posting about IV crush, assignment confusion, and blowups from overnight earnings plays",
+      "acceptance_criteria": [
+        "At least 1 platform scanned successfully",
+        "All results pass pre_flight_check",
+        "scan_runs row marked complete"
+      ],
+      "on_failure": "alert_admin",
+      "max_retries": 2,
+      "retry_delay_minutes": 30,
+      "circuit_breaker_threshold": 3
+    },
+    {
+      "id": "earnings_scan",
+      "name": "Post-earnings IV crush scan",
+      "schedule": "0 8 * * 2,4",
+      "description": "Tuesday and Thursday mornings — highest volume of IV crush complaints after Monday/Wednesday earnings",
+      "acceptance_criteria": [
+        "Reddit options and thetagang scanned for earnings IV crush signals",
+        "No duplicates from daily scan"
+      ],
+      "on_failure": "log_warning",
+      "max_retries": 1,
+      "retry_delay_minutes": 60
+    },
+    {
+      "id": "calendly_poll",
+      "name": "Calendly booking poll",
+      "schedule": "*/15 * * * *",
+      "description": "Poll Calendly for new discovery call bookings",
+      "acceptance_criteria": [
+        "New bookings matched within 15 minutes",
+        "Pre-call brief generated",
+        "No double-processing"
+      ],
+      "on_failure": "log_warning",
+      "max_retries": 3,
+      "retry_delay_minutes": 5
+    }
+  ],
+  "global_limits": {
+    "max_prospects_per_run": 50,
+    "max_apify_calls_per_hour": 10,
+    "max_claude_calls_per_run": 100
+  }
+}

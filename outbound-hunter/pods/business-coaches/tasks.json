@@ -1,0 +1,38 @@
+{
+  "pod_slug": "business-coaches",
+  "schedule": "0 8 * * *",
+  "max_approvals_per_run": 40,
+  "min_score_to_qualify": 4,
+  "auto_approve_above": 9.0,
+  "platforms_priority": ["facebook", "reddit", "linkedin"],
+  "subreddits": [
+    "Entrepreneur",
+    "smallbusiness",
+    "Coaching",
+    "startups",
+    "business",
+    "Freelance",
+    "consulting"
+  ],
+  "facebook_groups": [
+    "Business Owners and Entrepreneurs",
+    "Online Business Owners",
+    "Entrepreneur Support Network",
+    "Business Growth Strategies",
+    "Female Entrepreneurs Network"
+  ],
+  "linkedin_search_queries": [
+    "business owner revenue plateau",
+    "entrepreneur struggling with growth",
+    "need help scaling my business",
+    "business coaching recommendations",
+    "how to grow my business"
+  ],
+  "abort_if": [
+    "coach_seeking_clients",
+    "coaching_certification_content",
+    "promotional_post_2plus_signals",
+    "revenue_under_100k_and_score_above_7"
+  ],
+  "notes": "Facebook Groups are the richest source for this niche — candid pain posts from business owners without the polish of LinkedIn. Reddit is priority 2 for anonymous pain expression."
+}

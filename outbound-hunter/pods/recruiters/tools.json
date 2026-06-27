@@ -1,0 +1,42 @@
+{
+  "pod_slug": "recruiters",
+  "scrapers": {
+    "linkedin": {
+      "enabled": true,
+      "priority": 1,
+      "rate_limit_per_hour": 10,
+      "actor": "apify/linkedin-post-search-scraper",
+      "notes": "Primary — both agency owners and hiring managers post openly on LinkedIn about BD and talent pain"
+    },
+    "facebook": {
+      "enabled": true,
+      "priority": 2,
+      "rate_limit_per_hour": 15,
+      "actor": "apify/facebook-groups-scraper",
+      "notes": "Recruiter Facebook groups have candid BD conversations and hiring manager pain threads"
+    },
+    "reddit": {
+      "enabled": true,
+      "priority": 3,
+      "rate_limit_per_hour": 30,
+      "actor": "apify/reddit-scraper",
+      "notes": "r/recruiting and r/humanresources for BD pain. r/smallbusiness for hiring manager pain."
+    }
+  },
+  "outbound": {
+    "hubspot": {
+      "enabled": true,
+      "portal_id": null,
+      "sequence_id": null,
+      "notes": "Set portal_id and sequence_id per client. Two sequences: one for agency_owner, one for hiring_manager"
+    },
+    "meta_ads": {
+      "enabled": false,
+      "notes": "Disabled by default"
+    },
+    "calendly": {
+      "enabled": true,
+      "notes": "Discovery call CTAs in approved messages"
+    }
+  }
+}

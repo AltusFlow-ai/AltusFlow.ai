@@ -1,0 +1,37 @@
+{
+  "pod_slug": "msps",
+  "schedule": "0 7 * * *",
+  "max_approvals_per_run": 40,
+  "min_score_to_qualify": 4,
+  "auto_approve_above": 9.0,
+  "platforms_priority": ["reddit", "linkedin", "facebook"],
+  "subreddits": [
+    "msp",
+    "sysadmin",
+    "smallbusiness",
+    "Entrepreneur",
+    "ITCareerQuestions",
+    "cybersecurity"
+  ],
+  "facebook_groups": [
+    "MSP Business Growth",
+    "Managed Service Providers Network",
+    "Small Business IT Help",
+    "Business Technology Decisions"
+  ],
+  "linkedin_search_queries": [
+    "msp lead generation",
+    "growing my managed services business",
+    "it support nightmare small business",
+    "looking for a better msp",
+    "frustrated with it support"
+  ],
+  "prospect_types": ["msp_owner", "sme_prospect"],
+  "urgent_keywords": ["ransomware", "data breach", "got hacked", "phishing attack", "malware"],
+  "abort_if": [
+    "it_professional_in_title",
+    "coding_dev_content",
+    "it_job_listing"
+  ],
+  "notes": "Reddit is primary — r/smallbusiness and r/Entrepreneur have the highest density of unguarded IT pain from business owners. Security incident posts should be flagged as urgent and reviewed immediately regardless of score."
+}

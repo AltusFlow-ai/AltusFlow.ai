@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>AltusFlow — Budget</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0a;color:#e4e4e4;min-height:100vh}
+.topbar{background:#111;border-bottom:1px solid #222;padding:14px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10}
+.logo{font-size:14px;font-weight:600;color:#fff;letter-spacing:.06em}
+.logo span{color:#1D9E75}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.tenant-chip{font-size:11px;color:#555;padding:4px 10px;background:#161616;border:1px solid #222;border-radius:20px;letter-spacing:.04em}
+.alert-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;background:#2a0f0f;border:1px solid #D85A30;border-radius:20px;font-size:12px;color:#D85A30;cursor:pointer;text-decoration:none}
+.alert-badge .dot{width:7px;height:7px;border-radius:50%;background:#D85A30}
+.sign-out{font-size:12px;color:#555;padding:5px 12px;border:1px solid #2a2a2a;border-radius:6px;text-decoration:none;transition:color .15s,border-color .15s}
+.sign-out:hover{color:#aaa;border-color:#444}
+.tabs{display:flex;gap:2px;padding:16px 24px 0}
+.tab{padding:8px 16px;border-radius:8px 8px 0 0;font-size:13px;cursor:pointer;border:none;background:transparent;color:#666;text-decoration:none;display:inline-block}
+.tab:hover{color:#aaa}
+.tab.active{background:#111;color:#fff;border:1px solid #222;border-bottom-color:#111}
+.tab.accent{color:#1D9E75}
+.main{padding:20px 24px;max-width:960px}
+.section-label{font-size:11px;font-weight:600;color:#555;letter-spacing:.1em;text-transform:uppercase;margin-bottom:14px}
+.card{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:20px 22px;margin-bottom:16px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;color:#fff}
+.card-sub{font-size:11px;color:#555}
+
+/* Stats row */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px}
+.stat-box{background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:16px 18px}
+.stat-n{font-size:24px;font-weight:700;color:#fff;line-height:1;margin-bottom:5px}
+.stat-n.green{color:#1D9E75}
+.stat-n.yellow{color:#EF9F27}
+.stat-n.blue{color:#5b9bd5}
+.stat-n.roi{font-size:28px}
+.stat-l{font-size:10px;color:#555;letter-spacing:.08em;text-transform:uppercase}
+.stat-sub{font-size:11px;color:#444;margin-top:3px}
+
+/* Platform bars */
+.bar-row{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.bar-row:last-child{margin-bottom:0}
+.bar-platform{font-size:12px;color:#aaa;width:90px;flex-shrink:0}
+.bar-track{flex:1;height:6px;background:#1e1e1e;border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .4s ease}
+.bar-meta{background:#1877F2}
+.bar-apify{background:#00B6A1}
+.bar-altusflow{background:#1D9E75}
+.bar-hubspot{background:#FF7A59}
+.bar-calendly{background:#0AE8F0}
+.bar-linkedin{background:#0A66C2}
+.bar-other{background:#555}
+.bar-amount{font-size:12px;color:#e4e4e4;width:72px;text-align:right;flex-shrink:0}
+.bar-pct{font-size:11px;color:#444;width:32px;text-align:right;flex-shrink:0}
+.bar-empty{font-size:13px;color:#444;padding:12px 0;text-align:center;width:100%}
+
+/* Allocate form */
+.form-row{display:grid;grid-template-columns:1fr 140px 140px auto;gap:10px;align-items:end}
+.field-label{font-size:10px;font-weight:600;color:#555;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+input[type=text],input[type=number],select{width:100%;background:#0d0d0d;border:1px solid #252525;border-radius:7px;padding:9px 12px;font-size:13px;color:#e4e4e4;outline:none;transition:border-color .2s}
+input[type=text]:focus,input[type=number]:focus,select:focus{border-color:#1D9E75;box-shadow:0 0 0 2px rgba(29,158,117,.1)}
+select{cursor:pointer}
+option{background:#111}
+
+/* Buttons */
+.btn{padding:9px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:opacity .15s;white-space:nowrap}
+.btn:hover{opacity:.82}
+.btn-primary{background:#1D9E75;color:#fff}
+.btn-muted{background:transparent;color:#666;border:1px solid #2a2a2a}
+.btn-muted:hover{color:#aaa;border-color:#444}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px}
+
+/* Log manual transaction */
+.log-form-row{display:grid;grid-template-columns:120px 1fr 100px 80px 120px auto;gap:8px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid #1a1a1a}
+
+/* Filters */
+.filters-row{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px}
+.filters-row .field{flex:1;min-width:110px}
+.filters-row .btn{flex-shrink:0;align-self:flex-end}
+
+/* Transaction table */
+.tx-table{width:100%;border-collapse:collapse;font-size:12px}
+.tx-table th{color:#555;font-weight:500;text-align:left;padding:6px 10px;border-bottom:1px solid #1e1e1e;font-size:10px;letter-spacing:.06em;text-transform:uppercase}
+.tx-table td{padding:9px 10px;border-bottom:1px solid #161616;vertical-align:middle}
+.tx-table tr:last-child td{border-bottom:none}
+.tx-platform{font-weight:500;color:#e4e4e4}
+.tx-desc{color:#888;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx-amount-out{color:#e4e4e4;font-weight:600;font-variant-numeric:tabular-nums}
+.tx-amount-in{color:#1D9E75;font-weight:600;font-variant-numeric:tabular-nums}
+.tx-dir-out{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:4px;background:#1a1a1a;color:#666;font-weight:500}
+.tx-dir-in{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:4px;background:#0d2a1e;color:#1D9E75;font-weight:500}
+.tx-date{color:#444;font-variant-numeric:tabular-nums}
+.tx-status-confirmed{color:#1D9E75;font-size:10px}
+.tx-status-pending{color:#EF9F27;font-size:10px}
+.tx-status-void{color:#555;font-size:10px}
+.empty-state{text-align:center;padding:40px 0;color:#444;font-size:13px}
+.pagination{display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:14px;border-top:1px solid #1a1a1a;font-size:12px;color:#555}
+.pg-btns{display:flex;gap:6px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;background:#1D9E75;color:#fff;padding:12px 20px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:100}
+.toast.show{opacity:1}
+
+/* Divider */
+.divider{border:none;border-top:1px solid #1a1a1a;margin:14px 0}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">ALTUS<span>FLOW</span> &nbsp;·&nbsp; Budget</div>
+  <div class="topbar-right">
+    {% if tenant_name %}<span class="tenant-chip">{{ tenant_name }}</span>{% endif %}
+    {% if alert_count %}<a href="/" class="alert-badge"><span class="dot"></span>{{ alert_count }} alert{{ 's' if alert_count != 1 }}</a>{% endif %}
+    <a href="{{ url_for('auth.logout') }}" class="sign-out">Sign out</a>
+  </div>
+</div>
+
+<div class="tabs">
+  <a href="/"               class="tab">Pending</a>
+  <a href="/batch-confirm"  class="tab">Batch Confirm</a>
+  <a href="/approved"       class="tab">Approved</a>
+  <a href="/admin"          class="tab">Admin</a>
+  <a href="/budget"         class="tab active">Budget</a>
+  <a href="/connections"    class="tab accent">Connections</a>
+</div>
+
+<div class="main">
+
+  <!-- Stats row -->
+  <p class="section-label">{{ summary.month_label }} — Budget Overview</p>
+  <div class="stats-row">
+    <div class="stat-box">
+      <div class="stat-n">{{ summary.allocated | currency }}</div>
+      <div class="stat-l">Allocated</div>
+      <div class="stat-sub">total budget</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-n {% if summary.spent > summary.allocated %}red{% else %}yellow{% endif %}">{{ summary.spent | currency }}</div>
+      <div class="stat-l">Spent</div>
+      <div class="stat-sub">this month</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-n {% if summary.remaining > 0 %}green{% endif %}">{{ summary.remaining | currency }}</div>
+      <div class="stat-l">Remaining</div>
+      <div class="stat-sub">budget left</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-n blue">{{ summary.pipeline | currency }}</div>
+      <div class="stat-l">Pipeline In</div>
+      <div class="stat-sub">revenue this month</div>
+    </div>
+    <div class="stat-box">
+      <div class="stat-n roi {% if summary.roi >= 3 %}green{% elif summary.roi >= 1 %}yellow{% endif %}">
+        {% if summary.roi > 0 %}{{ summary.roi }}x{% else %}—{% endif %}
+      </div>
+      <div class="stat-l">ROI</div>
+      <div class="stat-sub">pipeline / spend</div>
+    </div>
+  </div>
+
+  <!-- Platform breakdown -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Spend by Platform — {{ summary.month_label }}</span>
+      <span class="card-sub">outbound costs only</span>
+    </div>
+    {% if platform_breakdown %}
+      {% for row in platform_breakdown %}
+      {% set slug = row.platform | lower | replace(' ', '_') | replace('/', '_') %}
+      <div class="bar-row">
+        <span class="bar-platform">{{ row.platform }}</span>
+        <div class="bar-track">
+          <div class="bar-fill bar-{{ slug }}" style="width:{{ row.pct }}%"></div>
+        </div>
+        <span class="bar-amount">{{ row.spent | currency }}</span>
+        <span class="bar-pct">{{ row.pct }}%</span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="bar-empty">No spend logged this month yet. Log your first transaction below.</p>
+    {% endif %}
+  </div>
+
+  <!-- Allocate budget -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Allocate Budget</span>
+      <span class="card-sub">set or update monthly budget caps per category</span>
+    </div>
+    <form method="POST" action="/budget/allocate">
+      <div class="form-row">
+        <div>
+          <div class="field-label">Budget Name</div>
+          <input type="text" name="budget_name" placeholder="e.g. Meta Ads — June" required/>
+        </div>
+        <div>
+          <div class="field-label">Type</div>
+          <select name="budget_type">
+            <option value="monthly">Monthly</option>
+            <option value="quarterly">Quarterly</option>
+            <option value="annual">Annual</option>
+            <option value="campaign">Campaign</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Allocated ($)</div>
+          <input type="number" name="allocated" placeholder="500" min="0" step="0.01" required/>
+        </div>
+        <div style="padding-bottom:1px">
+          <button type="submit" class="btn btn-primary">Set Allocation</button>
+        </div>
+      </div>
+    </form>
+
+    {% if budgets %}
+    <hr class="divider"/>
+    <div style="font-size:10px;color:#555;letter-spacing:.06em;text-transform:uppercase;margin-bottom:10px">Current Budget Categories</div>
+    {% for b in budgets %}
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid #161616">
+      <span style="font-size:13px;color:#e4e4e4">{{ b.budget_name }}</span>
+      <span style="font-size:12px;color:#555">{{ b.budget_type }}</span>
+      <span style="font-size:13px;color:#EF9F27">{{ b.spent | currency }} spent</span>
+      <span style="font-size:13px;color:#fff">/ {{ b.total_allocated | currency }} alloc</span>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+
+  <!-- Log manual transaction -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Log Transaction</span>
+      <span class="card-sub">manually record spend or revenue</span>
+    </div>
+    <form method="POST" action="/budget/log">
+      <div class="log-form-row">
+        <div>
+          <div class="field-label">Platform</div>
+          <select name="platform" required>
+            <option value="">— select —</option>
+            <option value="Meta Ads">Meta Ads</option>
+            <option value="Apify">Apify</option>
+            <option value="AltusFlow">AltusFlow</option>
+            <option value="HubSpot">HubSpot</option>
+            <option value="Calendly">Calendly</option>
+            <option value="LinkedIn">LinkedIn</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Description</div>
+          <input type="text" name="description" placeholder="e.g. June retargeting campaign" required/>
+        </div>
+        <div>
+          <div class="field-label">Amount ($)</div>
+          <input type="number" name="amount" placeholder="0.00" min="0.01" step="0.01" required/>
+        </div>
+        <div>
+          <div class="field-label">Direction</div>
+          <select name="direction">
+            <option value="out">Spend (out)</option>
+            <option value="in">Revenue (in)</option>
+          </select>
+        </div>
+        <div>
+          <div class="field-label">Budget Category</div>
+          <select name="budget_name">
+            <option value="">— none —</option>
+            {% for b in budgets %}
+            <option value="{{ b.budget_name }}">{{ b.budget_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div style="padding-bottom:1px">
+          <button type="submit" class="btn btn-primary">Log</button>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Transaction ledger -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">Transaction Ledger</span>
+      <a href="/budget/export" class="btn btn-muted btn-sm">Export CSV</a>
+    </div>
+
+    <!-- Filters -->
+    <form method="GET" action="/budget">
+      <div class="filters-row">
+        <div class="field">
+          <div class="field-label">Platform</div>
+          <select name="platform">
+            <option value="">All Platforms</option>
+            {% for p in platforms %}
+            <option value="{{ p }}" {% if filters.platform == p %}selected{% endif %}>{{ p }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">Direction</div>
+          <select name="direction">
+            <option value="">All</option>
+            <option value="out" {% if filters.direction == 'out' %}selected{% endif %}>Spend (out)</option>
+            <option value="in"  {% if filters.direction == 'in'  %}selected{% endif %}>Revenue (in)</option>
+          </select>
+        </div>
+        <div class="field">
+          <div class="field-label">From</div>
+          <input type="text" name="date_from" placeholder="YYYY-MM-DD" value="{{ filters.date_from or '' }}" style="max-width:130px"/>
+        </div>
+        <div class="field">
+          <div class="field-label">To</div>
+          <input type="text" name="date_to" placeholder="YYYY-MM-DD" value="{{ filters.date_to or '' }}" style="max-width:130px"/>
+        </div>
+        <button type="submit" class="btn btn-muted btn-sm">Filter</button>
+        {% if filters.platform or filters.direction or filters.date_from or filters.date_to %}
+        <a href="/budget" class="btn btn-muted btn-sm">Clear</a>
+        {% endif %}
+      </div>
+    </form>
+
+    {% if transactions %}
+    <table class="tx-table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Platform</th>
+          <th>Description</th>
+          <th style="text-align:right">Amount</th>
+          <th>Direction</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for tx in transactions %}
+        <tr>
+          <td class="tx-date">{{ tx.transaction_date[:16] }}</td>
+          <td class="tx-platform">{{ tx.platform }}</td>
+          <td class="tx-desc" title="{{ tx.description }}">{{ tx.description }}</td>
+          <td style="text-align:right">
+            {% if tx.direction == 'in' %}
+            <span class="tx-amount-in">+{{ tx.amount | currency }}</span>
+            {% else %}
+            <span class="tx-amount-out">{{ tx.amount | currency }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if tx.direction == 'in' %}
+            <span class="tx-dir-in">&#x25B2; In</span>
+            {% else %}
+            <span class="tx-dir-out">&#x25BC; Out</span>
+            {% endif %}
+          </td>
+          <td><span class="tx-status-{{ tx.status }}">{{ tx.status }}</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="pagination">
+      <span>Showing {{ offset + 1 }}–{{ [offset + transactions|length, total_count]|min }} of {{ total_count }}</span>
+      <div class="pg-btns">
+        {% if offset > 0 %}
+        <a href="/budget?platform={{ filters.platform or '' }}&direction={{ filters.direction or '' }}&date_from={{ filters.date_from or '' }}&date_to={{ filters.date_to or '' }}&offset={{ [offset - page_size, 0]|max }}" class="btn btn-muted btn-sm">← Prev</a>
+        {% endif %}
+        {% if offset + page_size < total_count %}
+        <a href="/budget?platform={{ filters.platform or '' }}&direction={{ filters.direction or '' }}&date_from={{ filters.date_from or '' }}&date_to={{ filters.date_to or '' }}&offset={{ offset + page_size }}" class="btn btn-muted btn-sm">Next →</a>
+        {% endif %}
+      </div>
+    </div>
+
+    {% else %}
+    <div class="empty-state">
+      No transactions found.
+      {% if filters.platform or filters.direction or filters.date_from or filters.date_to %}
+      <a href="/budget" style="color:#1D9E75;text-decoration:none"> Clear filters</a>
+      {% else %}
+      Log your first transaction above.
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<script>
+const p = new URLSearchParams(location.search);
+if (p.get('saved')) {
+  const t = document.getElementById('toast');
+  t.textContent = 'Transaction logged.';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>

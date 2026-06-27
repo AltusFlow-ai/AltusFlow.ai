@@ -1,0 +1,42 @@
+{
+  "pod_slug": "commercial-real-estate",
+  "scrapers": {
+    "linkedin": {
+      "enabled": true,
+      "priority": 1,
+      "rate_limit_per_hour": 10,
+      "actor": "apify/linkedin-post-search-scraper",
+      "notes": "Primary — CRE brokers and business owners with transaction needs both active on LinkedIn"
+    },
+    "facebook": {
+      "enabled": true,
+      "priority": 2,
+      "rate_limit_per_hour": 15,
+      "actor": "apify/facebook-groups-scraper",
+      "notes": "CRE professional groups and business investment communities"
+    },
+    "reddit": {
+      "enabled": true,
+      "priority": 3,
+      "rate_limit_per_hour": 30,
+      "actor": "apify/reddit-scraper",
+      "notes": "r/CommercialRealEstate, r/realestateinvesting for broker BD pain and transaction signals"
+    }
+  },
+  "outbound": {
+    "hubspot": {
+      "enabled": true,
+      "portal_id": null,
+      "sequence_id": null,
+      "notes": "Set portal_id and sequence_id per client. Two sequences: one for cre_broker, one for transaction_prospect"
+    },
+    "meta_ads": {
+      "enabled": false,
+      "notes": "Disabled by default"
+    },
+    "calendly": {
+      "enabled": true,
+      "notes": "Discovery call CTAs in approved messages"
+    }
+  }
+}
