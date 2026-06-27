@@ -248,7 +248,7 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
                     p['_reddit_icp_boost'] = boost
                     p['_reddit_boost_notes'] = boost_notes
                     results.append(p)
-                time.sleep(0.5)  # Stay within 60 req/min
+                time.sleep(2)  # 2s between phrase searches to stay within 60 req/min
             except Exception as e:
                 log_pipeline_error(
                     run_id, "reddit_scraper",
@@ -271,7 +271,7 @@ def scan_subreddit(reddit, subreddit_name, signal_phrases, niche_slug, run_id=No
                     p['_reddit_icp_boost'] = boost
                     p['_reddit_boost_notes'] = boost_notes
                     results.append(p)
-                time.sleep(0.5)
+                time.sleep(2)  # 2s between hot/new feed requests
             except Exception as e:
                 log_pipeline_error(
                     run_id, "reddit_scraper",
@@ -328,13 +328,15 @@ def run_niche_search(niche_slug, run_id=None):
 
     print(f"\n[Reddit] [{niche_slug}] Scanning {len(subreddits)} subreddits...")
 
-    for subreddit in subreddits:
+    for i, subreddit in enumerate(subreddits):
         posts = scan_subreddit(reddit, subreddit, signal_phrases, niche_slug, run_id=run_id)
         for p in posts:
             key = (p["handle"], p["post_url"])
             if key not in seen_handles:
                 seen_handles.add(key)
                 all_results.append(p)
+        if i < len(subreddits) - 1:
+            time.sleep(3)  # 3s between subreddits to avoid rate limits
 
     print(f"[Reddit] [{niche_slug}] Total unique: {len(all_results)}")
     return all_results
