@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../App.jsx'
 
 const PAGE_META = {
-  prospects:   ['Today\'s prospects',  'Scanner ran 4:15 PM · 14 qualified · 6 auto-approved'],
-  replies:     ['Reply center',        '3 unread · all platforms in one place'],
+  prospects:   ['Today\'s prospects',  'Scans run at 4:15 PM and 8:00 PM ET daily'],
+  replies:     ['Reply center',        'All platforms in one place'],
   journey:     ['Journey',             'Full prospect timeline from Reddit post to closed deal'],
   pipeline:    ['Pipeline',            'All prospects across every stage · HubSpot synced'],
   analytics:   ['Analytics',           'Funnel performance · RAG metrics · speed to touch'],
@@ -17,7 +17,7 @@ const PAGE_META = {
   'contacts':       ['Contacts',        'Warm leads, past clients, referral sources — people you already know'],
   'command-center': ['Command Center', 'Agency ops · all clients · pod health · pipeline at a glance'],
   clients:          ['Clients',        'All active client accounts'],
-  pods:        ['Pods',                '6 pods active · orchestrator running · 0 errors'],
+  pods:        ['Pods',                'Orchestrator running'],
   connections: ['Connections',         'All API integrations in one place'],
   settings:    ['Settings',            'Account · niche config · team · plan · notifications'],
 }
@@ -87,9 +87,6 @@ export default function Topbar() {
           <div className={`pulse ${hermesMode}`} />
           <span>{MODE_LABELS[hermesMode]}</span>
         </div>
-        {screen === 'prospects' && (
-          <button className="btn btn-primary">Approve all 9+ →</button>
-        )}
       </div>
     </div>
   )
