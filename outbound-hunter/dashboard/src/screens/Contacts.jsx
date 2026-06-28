@@ -203,7 +203,7 @@ export default function Contacts() {
         if (Array.isArray(d) && d.length > 0) { setContacts(d); setLoading(false); return }
       }
     } catch {}
-    setContacts(DEMO)
+    setContacts([])
     setLoading(false)
   }, [])
 

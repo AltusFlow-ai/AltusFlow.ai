@@ -226,12 +226,12 @@ export default function Sidebar() {
             </div>
           </div>
         </div>
-        <a
-          href="/logout"
-          style={{ fontSize: 10, color: 'var(--text-tertiary)', textDecoration: 'none', flexShrink: 0, padding: '3px 6px', borderRadius: 4, border: '1px solid var(--border)' }}
+        <button
+          onClick={() => { window.location.href = '/logout' }}
+          style={{ fontSize: 10, color: 'var(--text-tertiary)', background: 'none', cursor: 'pointer', flexShrink: 0, padding: '3px 6px', borderRadius: 4, border: '1px solid var(--border)' }}
         >
           Log out
-        </a>
+        </button>
       </div>
 
     </div>

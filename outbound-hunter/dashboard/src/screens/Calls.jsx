@@ -150,7 +150,7 @@ export default function Calls() {
         <div className="stat-card rag-green"><div className="stat-label">Calls{activeNiche !== 'all' ? ` · ${activeNiche.toUpperCase()}` : ' this week'}</div><div className="stat-value">{displayed.length}</div></div>
         <div className="stat-card rag-green"><div className="stat-label">Booked</div><div className="stat-value">{booked}</div><div className="stat-delta up">from calls</div></div>
         <div className="stat-card rag-amber"><div className="stat-label">Callbacks</div><div className="stat-value">{callbacks}</div></div>
-        <div className="stat-card"><div className="stat-label">Avg duration</div><div className="stat-value">5:18</div></div>
+        <div className="stat-card"><div className="stat-label">Avg duration</div><div className="stat-value">—</div></div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 12 }}>

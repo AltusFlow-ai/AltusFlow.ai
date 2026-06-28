@@ -89,20 +89,17 @@ export default function Journey() {
     fetch(`/api/journey?${params}`)
       .then(r => r.ok ? r.json() : [])
       .then(d => {
-        const list = Array.isArray(d) && d.length > 0 ? d : DEMO_PROSPECTS
-        setProspects(list)
+        setProspects(Array.isArray(d) ? d : [])
         setLoading(false)
       })
-      .catch(() => { setProspects(DEMO_PROSPECTS); setLoading(false) })
+      .catch(() => { setProspects([]); setLoading(false) })
   }, [search, activeNiche])
 
   function selectProspect(p) {
     setSelected(p)
     setReplyMode(false)
     setReplyText('')
-    // Show demo journey immediately if available
-    if (DEMO_JOURNEYS[p.id]) setJourney(DEMO_JOURNEYS[p.id])
-    else setJourney(null)
+    setJourney(null)
     fetch(`/api/journey/${p.id}`)
       .then(r => r.ok ? r.json() : null)
       .then(d => { if (d && d.events?.length) setJourney(d) })
