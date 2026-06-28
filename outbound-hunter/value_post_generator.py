@@ -45,12 +45,17 @@ _X_SYSTEM = (
 )
 
 
+_last_claude_error: str = ''
+
 def _call_claude(prompt: str, max_tokens: int = 1400, system: str = None) -> str | None:
+    global _last_claude_error
     api_key = os.environ.get('ANTHROPIC_API_KEY', '')
     if not api_key:
+        _last_claude_error = 'ANTHROPIC_API_KEY is not set in Railway env vars'
         return None
     try:
         import urllib.request as _ur
+        import urllib.error as _ue
         payload = {
             "model":      _MODEL,
             "max_tokens": max_tokens,
@@ -69,8 +74,15 @@ def _call_claude(prompt: str, max_tokens: int = 1400, system: str = None) -> str
             },
         )
         with _ur.urlopen(req, timeout=45) as resp:
+            _last_claude_error = ''
             return json.loads(resp.read())["content"][0]["text"].strip()
+    except _ue.HTTPError as e:
+        body_text = e.read().decode('utf-8', errors='replace')[:300]
+        _last_claude_error = f"Anthropic API HTTP {e.code}: {body_text}"
+        log.warning(f"[value_post] {_last_claude_error}")
+        return None
     except Exception as e:
+        _last_claude_error = str(e)
         log.warning(f"[value_post] claude error: {e}")
         return None
 

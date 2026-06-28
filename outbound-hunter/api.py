@@ -2974,14 +2974,15 @@ def value_posts_auto_generate():
         from database import create_value_post
 
         if platform == 'reddit':
-            from value_post_generator import generate_targeted_post
+            from value_post_generator import generate_targeted_post, _last_claude_error
             result = generate_targeted_post(
                 signal       = signal_data['signal'],
                 subreddit    = signal_data.get('subreddit', 'Daytrading'),
                 example_post = signal_data.get('example', ''),
             )
             if not result:
-                return jsonify({'ok': False, 'error': 'Generation failed — check ANTHROPIC_API_KEY'}), 500
+                from value_post_generator import _last_claude_error as _e
+                return jsonify({'ok': False, 'error': _e or 'Generation failed — check ANTHROPIC_API_KEY in Railway'}), 500
             pid = create_value_post(
                 subreddit      = result['subreddit'],
                 post_type      = result['type'],
@@ -3002,12 +3003,6 @@ def value_posts_auto_generate():
                 'subreddit': result['subreddit'],
                 'title':     result['title'],
             }
-            if pid:
-                try:
-                    import telegram_approver as _tg
-                    _tg.send_for_review(pid, {**result, 'platform': 'reddit', 'signal': signal_data['signal'], 'source_signal': signal_data['signal']})
-                except Exception:
-                    pass
             return jsonify({'ok': True, 'created': created})
 
         else:  # x
@@ -3019,7 +3014,8 @@ def value_posts_auto_generate():
                 example_post = signal_data.get('example', ''),
             )
             if not result:
-                return jsonify({'ok': False, 'error': 'Generation failed — check ANTHROPIC_API_KEY'}), 500
+                from value_post_generator import _last_claude_error as _e
+                return jsonify({'ok': False, 'error': _e or 'Generation failed — check ANTHROPIC_API_KEY in Railway'}), 500
             body = '\n\n'.join(result.get('tweets', []))
             hook = result.get('hook', signal_data['signal'])
             pid  = create_value_post(
@@ -3043,12 +3039,6 @@ def value_posts_auto_generate():
                 'tweet_count': result.get('tweet_count', 6),
                 'title':       hook[:120],
             }
-            if pid:
-                try:
-                    import telegram_approver as _tg
-                    _tg.send_for_review(pid, {**result, 'platform': 'x', 'signal': signal_data['signal'], 'source_signal': signal_data['signal']})
-                except Exception:
-                    pass
             return jsonify({'ok': True, 'created': created})
 
     except Exception as e:
