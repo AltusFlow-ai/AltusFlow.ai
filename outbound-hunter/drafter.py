@@ -58,35 +58,43 @@ def build_cta_url(signal_phrase, platform="linkedin", client_id=None):
 
 # ── System prompt ─────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are writing LinkedIn/X outreach messages for Austin at AltusFlow.ai.
+SYSTEM_PROMPT = """You are writing Reddit and X/Twitter outreach messages for Austin at AltusFlow.ai.
 
 AltusFlow builds automated growth systems for high-value B2B businesses — three components:
 1. A custom-trained AI assistant on their website that qualifies leads and books calls 24/7
 2. Meta Ads funnels that turn cold traffic into booked calls
-3. An outbound AI that scans for prospects actively signalling intent
+3. An outbound AI that scans Reddit and X for prospects actively signalling intent
 
-Your job: write short, human, personalised outreach that references the prospect's exact post and leads them toward a 20-minute discovery call.
+Your job: write TWO pieces of outreach that reference the prospect's exact post and lead them toward a 20-minute discovery call.
 
-RULES:
-- Open by referencing their EXACT words or a very close paraphrase — must feel specific, not generic
-- Acknowledge their specific pain in one sentence
-- One sentence on what AltusFlow does — keep it relevant to their pain
-- Soft CTA: suggest a 20-minute call, never pitch hard. End with the CTA link provided.
-- LinkedIn connection request: under 300 characters total (NO link — too short)
-- LinkedIn DM or X DM: under 500 characters total. Include the CTA link near the end.
-- No emojis
-- No corporate speak — sound like a real person who actually read their post
-- Never mention price
-- Never say "I noticed" or "I came across your profile" — be more direct
-- Start with "Hey [First Name] —"
+PIECE 1 — PUBLIC COMMENT (post this as a reply to their thread/tweet before any DM):
+- Adds genuine value to the conversation — answer their question or validate their pain
+- Sounds like a helpful community member, not a salesperson
+- DO NOT pitch AltusFlow directly — just show expertise and empathy
+- End with ONE soft question that invites them to continue the conversation
+- Reddit comments: 2-4 sentences, conversational, platform-native
+- X replies: under 250 characters, punchy
+- No links, no CTA URL in the comment
 
-Also write a CALL OPENER: a 1-2 sentence natural opener the founder uses at the START of the discovery call to reference this specific post. Should feel like they remembered exactly what the prospect said.
+PIECE 2 — DIRECT MESSAGE (send after they engage with the comment, or cold):
+- Open by referencing their EXACT words — must feel specific, not generic
+- One sentence on what AltusFlow does relevant to their pain
+- Soft CTA: suggest a 20-minute call, never pitch hard. Include the CTA link near the end.
+- Under 300 characters for Reddit DMs. Under 280 for X DMs.
+- No emojis. No corporate speak. Sound like a real person.
+- Never mention price. Never say "I noticed" or "I came across your profile."
+- Start with "Hey [First Name] —" if name is known, otherwise skip the opener
+
+RULES FOR BOTH:
+- Reference their EXACT signal phrase or a close paraphrase
+- Never hallucinate context not in their post
+- Write for the platform (Reddit = casual/community, X = punchy/direct)
 
 OUTPUT: Return a JSON object with exactly these keys:
 {
-  "connection_request": "under 300 char LinkedIn connection note — no CTA link",
-  "dm": "under 500 char DM with CTA link near the end",
-  "call_opener": "1-2 sentences to open the discovery call referencing their post"
+  "public_comment": "helpful public reply to their post — no CTA link, adds value, ends with a question",
+  "dm": "under 300 char DM with CTA link near the end",
+  "call_opener": "1-2 sentences to open the discovery call referencing their specific post"
 }
 Return ONLY the JSON. No preamble, no explanation."""
 
@@ -101,12 +109,12 @@ def draft_message(prospect):
     cta_url       = build_cta_url(signal_phrase, platform=platform)
 
     if not ANTHROPIC_API_KEY:
-        placeholder = "[API key not set — add ANTHROPIC_API_KEY to .env]"
+        placeholder = "[API key not set — add ANTHROPIC_API_KEY to Railway env vars]"
         return {
-            "connection_request": placeholder,
-            "dm":                 placeholder,
-            "call_opener":        placeholder,
-            "cta_url":            cta_url,
+            "public_comment": placeholder,
+            "dm":             placeholder,
+            "call_opener":    placeholder,
+            "cta_url":        cta_url,
         }
 
     first_name = (prospect.get("name") or "there").split()[0]
@@ -130,43 +138,36 @@ def draft_message(prospect):
     outreach_method = prospect.get("outreach_method", "direct")
     reddit_username = prospect.get("reddit_username") or prospect.get("handle", "")
 
-    if outreach_method == "reddit_dm":
-        # Direct Reddit DM — casual, platform-native, no LinkedIn framing
+    if outreach_method == "reddit_dm" or platform_label == "reddit":
         platform_note = (
-            f"\nIMPORTANT: This is a Reddit DM to u/{reddit_username}. "
-            "Write in a casual, Reddit-native tone. Do NOT mention LinkedIn. "
-            "The dm field is the Reddit DM body. "
-            "The connection_request field is the DM subject line (keep it under 100 characters, curiosity-driven). "
-            "Reference their post or subreddit naturally. "
-            "Do NOT include the CTA link in the subject line."
+            f"\nIMPORTANT: This is Reddit outreach to u/{reddit_username}. "
+            "public_comment = a helpful reply to their thread (2-4 sentences, no link). "
+            "dm = the Reddit DM body (under 300 chars, casual tone, include CTA link). "
+            "Reference their subreddit and post naturally."
         )
         platform_label = "reddit"
-    elif outreach_method == "find_linkedin":
-        # Found on Reddit, but reached via LinkedIn search
+    elif platform_label in ("twitter", "x"):
         platform_note = (
-            "\nIMPORTANT: This person was found on Reddit but will be reached on LinkedIn. "
-            "Write connection_request and dm as LinkedIn messages. "
-            "Do NOT reference Reddit, their username, or any subreddit."
+            "\nIMPORTANT: This is X/Twitter outreach. "
+            "public_comment = a reply to their tweet (under 250 chars, punchy, no link). "
+            "dm = the X DM (under 280 chars, include CTA link near the end)."
         )
-        platform_label = "linkedin"
+        platform_label = "x"
     else:
         platform_note = ""
-        platform_label = (prospect.get("platform") or "linkedin")
 
-    user_prompt = f"""Write outreach for this prospect. Include this exact CTA link in the DM: {cta_url}
+    user_prompt = f"""Write outreach for this prospect. Include this exact CTA link in the DM only: {cta_url}
 
 Name: {first_name}
-Title: {title}
-Company: {company}
 Platform: {platform_label}
 Signal phrase that matched: "{signal_phrase}"
 {niche_block}
 Their exact post:
 "{post_text}"
 {platform_note}
-The DM must open with a direct reference to what they wrote above, include the CTA link near the end, and be under 500 characters.
-The connection_request must be under 300 characters with no link.
-The call_opener is for the discovery call — 1-2 sentences referencing their specific post."""
+public_comment: helpful reply to their post, no CTA link, ends with a question.
+dm: opens with direct reference to their post, CTA link near the end, under 300 chars.
+call_opener: 1-2 sentences to open the discovery call referencing their specific post."""
 
     payload = {
         "model":      MODEL,
@@ -242,11 +243,12 @@ def draft_batch(prospects):
     """Draft messages for a list of prospects. Adds drafted_message, call_opener, cta_url."""
     for p in prospects:
         result = draft_message(p)
-        p["drafted_message"]          = result.get("dm", "")
-        p["drafted_connection_request"] = result.get("connection_request", "")
-        p["call_opener"]              = result.get("call_opener", "")
-        p["cta_url"]                  = result.get("cta_url", "")
-        p["draft_error"]              = result.get("error", "")
+        p["drafted_message"] = result.get("dm", "")
+        # public_comment is stored in call_opener — the Prospects UI reads call_opener
+        # for the "Public comment" / "Reply on X" tab
+        p["call_opener"]     = result.get("public_comment", "") or result.get("call_opener", "")
+        p["cta_url"]         = result.get("cta_url", "")
+        p["draft_error"]     = result.get("error", "")
     return prospects
 
 
