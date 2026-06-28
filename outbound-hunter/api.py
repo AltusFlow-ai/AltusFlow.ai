@@ -1323,7 +1323,9 @@ def notifs_get():
 @login_required
 def notifs_save():
     ok = save_notification_settings(_uid(), request.json or {})
-    return jsonify({'ok': bool(ok)})
+    if not ok:
+        return jsonify({'ok': False, 'error': 'DB write failed — check Railway logs'})
+    return jsonify({'ok': True})
 
 
 # ── Team ───────────────────────────────────────────────────────────────────────
@@ -2454,22 +2456,13 @@ def command_center_overview():
 @api.route('/command-center/run-all', methods=['POST'])
 @login_required
 def command_center_run_all():
-    """Trigger every registered pod immediately."""
-    results = {}
+    """Trigger an immediate scan."""
     try:
-        from scheduler import run_pod_now
-        from database import get_all_pod_statuses as _all_pods
-        pods  = _all_pods() or []
-        slugs = [p.get('pod_slug') for p in pods if p.get('pod_slug')]
-        for slug in slugs:
-            try:
-                run_pod_now(slug)
-                results[slug] = 'triggered'
-            except Exception as e:
-                results[slug] = f'error: {e}'
+        from scheduler import run_now
+        started, message = run_now()
+        return jsonify({'ok': started, 'message': message})
     except Exception as e:
-        return jsonify({'ok': False, 'error': str(e), 'results': results})
-    return jsonify({'ok': True, 'triggered': len(results), 'results': results})
+        return jsonify({'ok': False, 'error': str(e)})
 
 
 # ── Integrations ───────────────────────────────────────────────────────────────

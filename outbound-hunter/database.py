@@ -1416,8 +1416,9 @@ def get_notification_settings(client_id: str = None) -> dict:
             ).fetchone()
         if row and row[0]:
             return _json.loads(row[0])
-    except Exception:
-        pass
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[db] get_notification_settings failed: {e}")
     return {}
 
 
@@ -1428,7 +1429,9 @@ def save_notification_settings(client_id: str, prefs: dict) -> bool:
         value = _json.dumps(prefs)
         set_tenant_setting('notification_prefs', value)
         return True
-    except Exception:
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[db] save_notification_settings failed: {e}")
         return False
 
 
