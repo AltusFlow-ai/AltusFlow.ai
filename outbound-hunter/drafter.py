@@ -137,6 +137,7 @@ def draft_message(prospect):
 
     outreach_method = prospect.get("outreach_method", "direct")
     reddit_username = prospect.get("reddit_username") or prospect.get("handle", "")
+    platform_label  = platform
 
     if outreach_method == "reddit_dm" or platform_label == "reddit":
         platform_note = (

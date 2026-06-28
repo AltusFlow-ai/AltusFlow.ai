@@ -50,7 +50,7 @@ export default function Analytics() {
         </div>
         <div className="funnel-step">
           <div className="funnel-label">Scraped</div>
-          <div className="funnel-bar-wrap"><div className="funnel-bar" style={{ width: '100%' }}>{scraped} · 100%</div></div>
+          <div className="funnel-bar-wrap"><div className="funnel-bar" style={{ width: '100%' }}>{scraped}</div></div>
         </div>
         <div className="funnel-step">
           <div className="funnel-label">Qualified</div>
