@@ -212,7 +212,7 @@ export default function CommandCenter() {
   const handleScan = useCallback(async (slug) => {
     setScanning(s => ({ ...s, [slug]: true }))
     try {
-      await fetch('/api/command-center/run-all', { method: 'POST' })
+      await fetch(`/api/admin/pods/${slug}/run-now`, { method: 'POST' })
       setTimeout(() => {
         setScanning(s => ({ ...s, [slug]: false }))
         load()
@@ -347,7 +347,7 @@ export default function CommandCenter() {
 
         {pods.length === 0 ? (
           <div className="card" style={{ padding: 20, textAlign: 'center', color: 'var(--text-tertiary)', fontSize: 12 }}>
-            No pod data — orchestrator may not be running
+            Pods initialize after the first scan completes — click Run all scans above to start.
           </div>
         ) : (
           <div style={{

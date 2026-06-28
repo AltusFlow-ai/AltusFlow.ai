@@ -38,6 +38,7 @@ try:
         get_notification_settings, save_notification_settings,
         get_niches_with_counts,
         get_integrations, get_integration, save_integration,
+        get_pod_logs,
     )
 except ImportError as e:
     import sys
@@ -59,7 +60,8 @@ except ImportError as e:
      get_team, invite_team_member, remove_team_member,
      get_notification_settings, save_notification_settings,
      get_niches_with_counts,
-     get_integrations, get_integration, save_integration) = [_stub]*44
+     get_integrations, get_integration, save_integration,
+     get_pod_logs) = [_stub]*45
 
 try:
     from hermes import get_suggestion, generate_intelligence_brief as _hermes_brief
@@ -293,7 +295,7 @@ def conversation_messages(cid):
 def conversation_send(cid):
     body = request.json.get('message','').strip()
     if not body: abort(400)
-    ok = send_message(cid, body, sender='human')
+    ok = send_message(cid, 'human', body)
     return jsonify({'ok': bool(ok)})
 
 
@@ -338,7 +340,7 @@ def hermes_suggestion(cid):
 def hermes_send(cid):
     body = request.json.get('message','').strip()
     if not body: abort(400)
-    ok = send_message(cid, body, sender='hermes')
+    ok = send_message(cid, 'hermes', body)
     return jsonify({'ok': bool(ok)})
 
 
@@ -358,7 +360,7 @@ def prospect_replied(cid):
     """
     body = (request.get_json() or {}).get('message', '').strip()
     if body:
-        send_message(cid, body, sender='prospect')
+        send_message(cid, 'prospect', body)
     crm_result = {'ok': False, 'error': 'skipped'}
     try:
         from database import get_prospect_by_conversation
@@ -1146,6 +1148,17 @@ def pod_logs(slug):
         return jsonify([])
 
 
+@api.route('/stream/status')
+@login_required
+def stream_status():
+    """Live stream status — whether the scanner is active."""
+    try:
+        from scheduler import is_running
+        return jsonify({'active': is_running()})
+    except Exception:
+        return jsonify({'active': False})
+
+
 # ── Connections ────────────────────────────────────────────────────────────────
 
 def _conn_get_key(tenant_id, var_name):
@@ -1306,11 +1319,42 @@ def settings_get():
     return jsonify(get_settings(_uid()) or {})
 
 
+@api.route('/settings/platform-status')
+@login_required
+def platform_status():
+    """Returns which social platforms are fully connected (all creds present)."""
+    try:
+        from social_poster import reddit_connected, x_connected
+        return jsonify({'reddit': reddit_connected(), 'x': x_connected()})
+    except Exception as e:
+        return jsonify({'reddit': False, 'x': False, 'error': str(e)})
+
+
 @api.route('/settings', methods=['POST'])
 @login_required
 def settings_save():
-    ok = save_settings(_uid(), request.json or {})
-    return jsonify({'ok': bool(ok)})
+    data = request.json or {}
+    ok = save_settings(_uid(), data)
+    if not ok:
+        return jsonify({'ok': False, 'error': 'DB write failed — check Railway logs'})
+    # Push credentials into env so the current process picks them up immediately
+    import os as _os
+    _env_map = {
+        'scrapebadger_key':   'SCRAPEBADGER_API_KEY',
+        'anthropic_key':      'ANTHROPIC_API_KEY',
+        'reddit_client_id':   'REDDIT_CLIENT_ID',
+        'reddit_client_secret': 'REDDIT_CLIENT_SECRET',
+        'reddit_username':    'REDDIT_USERNAME',
+        'reddit_password':    'REDDIT_PASSWORD',
+        'x_api_key':          'X_API_KEY',
+        'x_api_secret':       'X_API_SECRET',
+        'x_access_token':     'X_ACCESS_TOKEN',
+        'x_access_secret':    'X_ACCESS_SECRET',
+    }
+    for field, env_var in _env_map.items():
+        if data.get(field):
+            _os.environ[env_var] = data[field]
+    return jsonify({'ok': True})
 
 
 @api.route('/settings/notifications')
@@ -1725,6 +1769,29 @@ def value_post_update(pid):
             comments = data.get('comments'),
         )
         return jsonify({'ok': ok})
+    except Exception as e:
+        return jsonify({'ok': False, 'error': str(e)})
+
+
+@api.route('/value-posts/<int:pid>/mark-posted', methods=['POST'])
+@login_required
+def value_post_mark_posted(pid):
+    """Mark a post as posted and save its URL for comment tracking."""
+    data = request.get_json(silent=True) or {}
+    url  = (data.get('url') or '').strip()
+    if not url:
+        return jsonify({'ok': False, 'error': 'URL required'})
+    try:
+        from database import _writer, _ensure_value_posts_table
+        from sqlalchemy import text as _t
+        _ensure_value_posts_table()
+        with _writer() as conn:
+            conn.execute(_t("""
+                UPDATE value_posts
+                SET status='posted', post_url=:url, posted_at=datetime('now')
+                WHERE id=:pid
+            """), {'url': url, 'pid': pid})
+        return jsonify({'ok': True})
     except Exception as e:
         return jsonify({'ok': False, 'error': str(e)})
 
@@ -2409,7 +2476,7 @@ def command_center_overview():
                             SUM(CASE WHEN status='replied'    THEN 1 ELSE 0 END) AS replied,
                             SUM(CASE WHEN status='booked'     THEN 1 ELSE 0 END) AS booked,
                             SUM(CASE WHEN status='closed_won' THEN 1 ELSE 0 END) AS closed_won,
-                            MAX(scraped_at) AS last_scan
+                            MAX(created_at) AS last_scan
                         FROM prospects
                     """).fetchone()
                     if row:
