@@ -374,22 +374,33 @@ function IntegrationsTab() {
 // ── Account tab ───────────────────────────────────────────────────────────────
 
 function AccountTab() {
-  const [form,   setForm]   = useState({})
-  const [saving, setSaving] = useState(false)
-  const [saved,  setSaved]  = useState(false)
+  const [form,     setForm]     = useState({})
+  const [saving,   setSaving]   = useState(false)
+  const [saved,    setSaved]    = useState(false)
+  const [platforms, setPlatforms] = useState({ reddit: false, x: false })
 
   useEffect(() => {
     fetch('/api/settings').then(r => r.ok ? r.json() : {}).then(d => setForm(d || {})).catch(() => {})
+    fetch('/api/settings/platform-status').then(r => r.ok ? r.json() : {}).then(d => setPlatforms(d || {})).catch(() => {})
   }, [])
+
+  const [saveErr, setSaveErr] = useState('')
 
   function save() {
     setSaving(true)
+    setSaveErr('')
     fetch('/api/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
-    }).then(() => { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000) })
-      .catch(() => setSaving(false))
+    })
+      .then(r => r.json())
+      .then(d => {
+        setSaving(false)
+        if (d && d.ok !== false) { setSaved(true); setTimeout(() => setSaved(false), 2500) }
+        else setSaveErr(d?.error || 'Save failed')
+      })
+      .catch(e => { setSaving(false); setSaveErr(String(e)) })
   }
 
   const field = (key, label, placeholder, type = 'text') => (
@@ -411,8 +422,6 @@ function AccountTab() {
     { value: 'real-estate',        label: 'Real Estate Investor' },
   ]
 
-  const isAdmin = form.niche === 'altusflow'
-
   return (
     <div style={{ maxWidth: 520 }}>
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>Account</div>
@@ -428,36 +437,117 @@ function AccountTab() {
           style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: 'var(--text-primary)', fontFamily: 'inherit' }}
         >
           <option value=''>Select mode…</option>
-          <option value='altusflow'>AltusFlow Admin — Posting to attract coaches as MY clients</option>
+          <optgroup label="── AltusFlow Admin: find coaches as MY clients ──">
+            {CLIENT_NICHES.map(n => (
+              <option key={`altusflow-${n.value}`} value={`altusflow-${n.value}`}>
+                Find {n.label}s → attract them to AltusFlow
+              </option>
+            ))}
+          </optgroup>
           <optgroup label="── Post on behalf of a client ──">
             {CLIENT_NICHES.map(n => (
-              <option key={n.value} value={n.value}>{n.label} — Posting to attract their clients</option>
+              <option key={n.value} value={n.value}>{n.label} → attract their clients</option>
             ))}
           </optgroup>
         </select>
         <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Controls the voice and intent of all AI-generated content</div>
       </div>
-      {isAdmin && (
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Which niche are you targeting? <span style={{ color: 'var(--teal)' }}>— pick the coach type you want to attract</span></label>
-          <select
-            value={form.target_niche || ''}
-            onChange={e => setForm(f => ({ ...f, target_niche: e.target.value }))}
-            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: 'var(--text-primary)', fontFamily: 'inherit' }}
-          >
-            <option value=''>Select target niche…</option>
-            {CLIENT_NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
-          </select>
-          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Posts will address pain points specific to this coach type</div>
-        </div>
-      )}
 
-      <button onClick={save} disabled={saving} style={{
-        background: 'var(--teal)', color: '#fff', border: 'none', borderRadius: 7,
-        padding: '8px 20px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-      }}>
-        {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
-      </button>
+      <div style={{ marginTop: 24, marginBottom: 16, borderTop: '1px solid var(--border)', paddingTop: 20 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>Connections</div>
+        <div style={{ fontSize: 12, color: 'var(--text-tertiary)', marginBottom: 16 }}>Paste keys once — the dashboard handles everything else automatically.</div>
+
+        {/* Reddit */}
+        <div style={{ background: 'var(--surface)', border: `1px solid ${platforms.reddit ? 'rgba(29,158,117,0.4)' : 'var(--border)'}`, borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 18 }}>🔴</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>Reddit</span>
+            {platforms.reddit
+              ? <span style={{ fontSize: 10, background: 'rgba(29,158,117,0.13)', color: 'var(--teal)', borderRadius: 4, padding: '2px 8px', marginLeft: 'auto' }}>● Connected</span>
+              : <span style={{ fontSize: 10, background: 'var(--surface-3)', color: 'var(--text-tertiary)', borderRadius: 4, padding: '2px 8px', marginLeft: 'auto' }}>Not connected</span>
+            }
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 12, lineHeight: 1.5 }}>
+            Go to <strong style={{ color: 'var(--text-secondary)' }}>reddit.com/prefs/apps</strong> → create app → choose <strong style={{ color: 'var(--text-secondary)' }}>script</strong> → get client ID + secret
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+            {[
+              ['reddit_client_id',     'Client ID',     'under the app name'],
+              ['reddit_client_secret', 'Client Secret', 'secret key'],
+              ['reddit_username',      'Username',      'your reddit username'],
+              ['reddit_password',      'Password',      'your reddit password'],
+            ].map(([key, label, ph]) => (
+              <div key={key}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 3 }}>{label}</label>
+                <input
+                  type="password" value={form[key] || ''} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={ph} autoComplete="off"
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', fontSize: 11, color: 'var(--text-primary)', fontFamily: 'inherit' }}
+                />
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Once connected: posts auto-submit, comments auto-tracked, replies send from dashboard</div>
+        </div>
+
+        {/* X / Twitter */}
+        <div style={{ background: 'var(--surface)', border: `1px solid ${platforms.x ? 'rgba(29,158,117,0.4)' : 'var(--border)'}`, borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 18 }}>🐦</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)' }}>X (Twitter)</span>
+            {platforms.x
+              ? <span style={{ fontSize: 10, background: 'rgba(29,158,117,0.13)', color: 'var(--teal)', borderRadius: 4, padding: '2px 8px', marginLeft: 'auto' }}>● Connected</span>
+              : <span style={{ fontSize: 10, background: 'var(--surface-3)', color: 'var(--text-tertiary)', borderRadius: 4, padding: '2px 8px', marginLeft: 'auto' }}>Not connected</span>
+            }
+          </div>
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginBottom: 12, lineHeight: 1.5 }}>
+            Apply at <strong style={{ color: 'var(--text-secondary)' }}>developer.twitter.com</strong> → create project + app → get OAuth 1.0a keys
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 8 }}>
+            {[
+              ['x_api_key',       'API Key',       'consumer key'],
+              ['x_api_secret',    'API Secret',    'consumer secret'],
+              ['x_access_token',  'Access Token',  'user access token'],
+              ['x_access_secret', 'Access Secret', 'user access secret'],
+            ].map(([key, label, ph]) => (
+              <div key={key}>
+                <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 3 }}>{label}</label>
+                <input
+                  type="password" value={form[key] || ''} onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                  placeholder={ph} autoComplete="off"
+                  style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', fontSize: 11, color: 'var(--text-primary)', fontFamily: 'inherit' }}
+                />
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)' }}>Requires Twitter developer approval — can take a few days. Posts/replies work without it via clipboard.</div>
+        </div>
+
+        {/* AI + Scanning */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '14px 16px', marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 12 }}>AI & Scanning</div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 3 }}>ScrapeBadger API Key <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>— prospect scanning</span></label>
+            <input type="password" value={form.scrapebadger_key || ''} onChange={e => setForm(f => ({ ...f, scrapebadger_key: e.target.value }))} placeholder="scrapebadger.com" autoComplete="off"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', fontSize: 11, color: 'var(--text-primary)', fontFamily: 'inherit' }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 10, fontWeight: 600, color: 'var(--text-tertiary)', display: 'block', marginBottom: 3 }}>Anthropic API Key <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>— AI content generation</span></label>
+            <input type="password" value={form.anthropic_key || ''} onChange={e => setForm(f => ({ ...f, anthropic_key: e.target.value }))} placeholder="console.anthropic.com" autoComplete="off"
+              style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 6, padding: '6px 8px', fontSize: 11, color: 'var(--text-primary)', fontFamily: 'inherit' }} />
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <button onClick={save} disabled={saving} style={{
+          background: 'var(--teal)', color: '#fff', border: 'none', borderRadius: 7,
+          padding: '8px 20px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+        </button>
+        {saveErr && <span style={{ fontSize: 11, color: 'var(--coral)' }}>{saveErr}</span>}
+      </div>
     </div>
   )
 }

@@ -147,41 +147,6 @@ def _generate_comment(subreddit: str, title: str, body: str) -> str | None:
         return None
 
 
-def _notify_telegram_warmup(post_id: str, subreddit: str, post_title: str,
-                              post_url: str, comment_text: str):
-    """Send warmup comment to Telegram for approval."""
-    bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    chat_id   = os.environ.get('TELEGRAM_CHAT_ID', '')
-    if not bot_token or not chat_id:
-        return
-
-    text = (
-        f"🔥 *Daily account warmup — r/{subreddit}*\n\n"
-        f"*Post:* _{post_title[:120]}_\n"
-        f"[View post]({post_url})\n\n"
-        f"*Suggested comment:*\n{comment_text[:500]}"
-    )
-    keyboard = json.dumps({'inline_keyboard': [[
-        {'text': '✅ Post Comment',   'callback_data': f'warmup_approve:{post_id}'},
-        {'text': '❌ Skip',           'callback_data': f'warmup_deny:{post_id}'},
-    ]]})
-    payload = json.dumps({
-        'chat_id':                  chat_id,
-        'text':                     text[:4096],
-        'parse_mode':               'Markdown',
-        'reply_markup':             keyboard,
-        'disable_web_page_preview': True,
-    }).encode()
-    try:
-        req = urllib.request.Request(
-            f'https://api.telegram.org/bot{bot_token}/sendMessage',
-            data    = payload,
-            headers = {'Content-Type': 'application/json'},
-            method  = 'POST',
-        )
-        urllib.request.urlopen(req, timeout=10)
-    except Exception as e:
-        log.warning('reddit_warmer: telegram notify error: %s', e)
 
 
 def post_warmup_comment(post_id: str) -> dict:

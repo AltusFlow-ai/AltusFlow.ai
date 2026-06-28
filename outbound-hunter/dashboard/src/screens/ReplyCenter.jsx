@@ -469,7 +469,7 @@ export default function ReplyCenter() {
                     <span className="conv-time" style={{ marginLeft: 'auto' }}>{timeAgo(c.last_at)}</span>
                   </div>
                   <div className="conv-name">
-                    {platform === 'x' ? '@' : 'u/'}{c.handle}
+                    {(c.platform || 'reddit').toLowerCase() === 'x' ? '@' : 'u/'}{c.handle}
                   </div>
                   <div className="conv-preview">{c.last_message}</div>
                 </div>

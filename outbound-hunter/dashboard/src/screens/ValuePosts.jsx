@@ -38,10 +38,13 @@ function StatusPill({ status }) {
 }
 
 // ── Post to Reddit modal ──────────────────────────────────────────────────────
-function PostToRedditModal({ post, onClose }) {
+function PostToRedditModal({ post, onClose, onPosted }) {
   const [titleCopied, setTitleCopied] = useState(false)
   const [bodyCopied,  setBodyCopied]  = useState(false)
-  const [step,        setStep]        = useState(1) // 1=copy, 2=post
+  const [step,        setStep]        = useState(1) // 1=copy, 2=open, 3=track
+  const [postUrl,     setPostUrl]     = useState('')
+  const [tracking,    setTracking]    = useState(false)
+  const [trackErr,    setTrackErr]    = useState('')
 
   const submitUrl = `https://www.reddit.com/r/${post.subreddit}/submit?type=self&title=${encodeURIComponent(post.title || '')}`
 
@@ -60,6 +63,24 @@ function PostToRedditModal({ post, onClose }) {
 
   const openReddit = () => {
     window.open(submitUrl, '_blank', 'width=900,height=700,scrollbars=yes,resizable=yes')
+    setStep(3)
+  }
+
+  const markPosted = async () => {
+    if (!postUrl.trim()) { setTrackErr('Paste your Reddit post URL first'); return }
+    setTracking(true)
+    setTrackErr('')
+    try {
+      const r = await fetch(`/api/value-posts/${post.id}/mark-posted`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: postUrl.trim(), platform: 'reddit' }),
+      })
+      const d = await r.json()
+      if (d.ok) { onPosted && onPosted(post.id, postUrl.trim()); onClose() }
+      else setTrackErr(d.error || 'Failed to save')
+    } catch (e) { setTrackErr(String(e)) }
+    setTracking(false)
   }
 
   // Close on Escape
@@ -109,13 +130,13 @@ function PostToRedditModal({ post, onClose }) {
 
         {/* Steps */}
         <div style={{ padding: '14px 20px 0', flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
             {[
-              { n: 1, label: 'Copy title + body' },
-              { n: 2, label: 'Open Reddit & paste' },
-              { n: 3, label: 'Submit & mark posted' },
+              { n: 1, label: 'Copy body' },
+              { n: 2, label: 'Open Reddit & submit' },
+              { n: 3, label: 'Paste URL → track replies' },
             ].map(s => (
-              <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div key={s.n} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <div style={{
                   width: 20, height: 20, borderRadius: '50%',
                   background: step >= s.n ? 'var(--teal)' : 'var(--border)',
@@ -202,36 +223,63 @@ function PostToRedditModal({ post, onClose }) {
         </div>
 
         {/* Footer */}
-        <div style={{
-          padding: '14px 20px', borderTop: '1px solid var(--border)',
-          display: 'flex', gap: 10, alignItems: 'center', flexShrink: 0,
-        }}>
-          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', flex: 1 }}>
-            {step === 1 && 'Copy the body first, then open Reddit — title will be pre-filled'}
-            {step >= 2 && '✓ Body copied — open Reddit, paste into the body field, then submit'}
-          </div>
-          <button
-            onClick={copyBody}
-            style={{
+        <div style={{ padding: '14px 20px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+          {/* Step 3: paste URL */}
+          {step === 3 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+                Paste your Reddit post URL to enable reply tracking
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <input
+                  autoFocus
+                  value={postUrl}
+                  onChange={e => setPostUrl(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && markPosted()}
+                  placeholder="https://www.reddit.com/r/Daytrading/comments/..."
+                  style={{
+                    flex: 1, background: 'var(--surface-2)', border: '1px solid var(--teal)',
+                    borderRadius: 7, padding: '7px 10px', fontSize: 12,
+                    color: 'var(--text-primary)', fontFamily: 'inherit', outline: 'none',
+                  }}
+                />
+                <button onClick={markPosted} disabled={tracking} style={{
+                  background: 'var(--teal)', color: '#fff', border: 'none',
+                  borderRadius: 7, padding: '7px 16px', fontSize: 12,
+                  fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap',
+                }}>
+                  {tracking ? 'Saving…' : 'Track replies'}
+                </button>
+              </div>
+              {trackErr && <div style={{ fontSize: 11, color: 'var(--coral)', marginTop: 5 }}>{trackErr}</div>}
+              <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 5 }}>
+                Once saved, the dashboard monitors comments automatically and surfaces leads in the Reply Center
+              </div>
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <div style={{ fontSize: 11, color: 'var(--text-tertiary)', flex: 1 }}>
+              {step === 1 && 'Copy the body first — title will be pre-filled in Reddit'}
+              {step === 2 && '✓ Body copied — open Reddit, paste into body, then submit'}
+              {step === 3 && 'Submitted? Paste the URL above to track comments and replies'}
+            </div>
+            <button onClick={copyBody} style={{
               background: 'rgba(83,74,183,0.12)', color: '#8B82D4',
               border: '1px solid rgba(83,74,183,0.35)',
-              padding: '8px 16px', borderRadius: 7, fontSize: 12,
+              padding: '7px 14px', borderRadius: 7, fontSize: 12,
               fontWeight: 700, cursor: 'pointer',
-            }}
-          >
-            {bodyCopied ? '✓ Copied!' : '1. Copy body'}
-          </button>
-          <button
-            onClick={openReddit}
-            style={{
+            }}>
+              {bodyCopied ? '✓ Copied!' : '1. Copy body'}
+            </button>
+            <button onClick={openReddit} style={{
               background: step >= 2 ? 'rgba(255,69,0,0.9)' : 'rgba(255,69,0,0.4)',
               color: '#fff', border: 'none',
-              padding: '8px 18px', borderRadius: 7, fontSize: 12,
+              padding: '7px 16px', borderRadius: 7, fontSize: 12,
               fontWeight: 700, cursor: 'pointer', transition: 'background 0.2s',
-            }}
-          >
-            2. Open Reddit →
-          </button>
+            }}>
+              2. Open Reddit →
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -770,6 +818,10 @@ function PostCard({ post, onUpdate }) {
         <PostToRedditModal
           post={{ ...post, title, body }}
           onClose={() => setShowPost(false)}
+          onPosted={(id, url) => {
+            setShowPost(false)
+            onUpdate && onUpdate({ ...post, status: 'posted', post_url: url })
+          }}
         />
       )}
 

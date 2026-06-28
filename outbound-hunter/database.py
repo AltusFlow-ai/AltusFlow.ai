@@ -80,6 +80,12 @@ def _get_engine():
                 connect_args={"check_same_thread": False},
                 poolclass=StaticPool,
             )
+            # Bootstrap schema for this tenant's fresh DB
+            try:
+                init_db()
+            except Exception as _e:
+                import logging as _log_tmp
+                _log_tmp.getLogger(__name__).warning("init_db for tenant %s failed: %s", slug, _e)
         return _engines[slug]
 
     # Legacy fallback — single-tenant mode (no login, env var config)
@@ -982,6 +988,7 @@ def init_db():
         _upsert_scheduler_row(conn)
         conn.execute(text(_REDDIT_TOP_POSTS_DDL))
         conn.execute(text(_CONTENT_PLANS_DDL))
+        conn.execute(text(_VALUE_POSTS_DDL))
 
     # Phase 2: column migrations (adds niche, confidence_*, routing_decision to existing tables)
     _migrate_columns()
@@ -1490,7 +1497,7 @@ def get_prospects(advisor_id=None, niche=None, status=None, tab=None, limit=200)
             if status:
                 clauses.append("status = :status"); params['status'] = status
             where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
-            rows = conn.execute(text(f"SELECT * FROM prospects {where} ORDER BY scraped_at DESC LIMIT :lim"),
+            rows = conn.execute(text(f"SELECT * FROM prospects {where} ORDER BY created_at DESC LIMIT :lim"),
                                 {**params, 'lim': limit}).fetchall()
             return [dict(r._mapping) for r in rows]
     except Exception as e:
@@ -1498,15 +1505,15 @@ def get_prospects(advisor_id=None, niche=None, status=None, tab=None, limit=200)
         return []
 
 
-def get_prospect_by_id(prospect_id):
+def get_prospect_by_id(prospect_id, advisor_id=None):
     return get_prospect(prospect_id)
 
 
-def approve_prospect(prospect_id):
+def approve_prospect(prospect_id, advisor_id=None):
     return update_status(prospect_id, 'approved')
 
 
-def skip_prospect(prospect_id):
+def skip_prospect(prospect_id, advisor_id=None):
     return update_status(prospect_id, 'skipped')
 
 
@@ -1577,7 +1584,30 @@ def create_client(name: str, email: str, niche: str = '') -> str:
 
 
 def get_pod_statuses(advisor_id=None):
-    return get_pod_statuses_inner(advisor_id) if False else []
+    try:
+        with _reader() as conn:
+            rows = conn.execute(text(
+                "SELECT * FROM pod_registry ORDER BY created_at DESC LIMIT 50"
+            )).fetchall()
+            return [dict(r._mapping) for r in rows]
+    except Exception:
+        return []
+
+
+def get_pod_logs(slug: str = None):
+    try:
+        with _reader() as conn:
+            if slug:
+                rows = conn.execute(text(
+                    "SELECT * FROM pod_status WHERE pod_slug=:s ORDER BY updated_at DESC LIMIT 50"
+                ), {"s": slug}).fetchall()
+            else:
+                rows = conn.execute(text(
+                    "SELECT * FROM pod_status ORDER BY updated_at DESC LIMIT 50"
+                )).fetchall()
+            return [dict(r._mapping) for r in rows]
+    except Exception:
+        return []
 
 
 def get_all_calls(advisor_id=None):
@@ -1615,7 +1645,7 @@ def get_reports(advisor_id=None):
     return []
 
 
-def get_report_path(report_id):
+def get_report_path(report_id, advisor_id=None):
     return None
 
 
@@ -2978,7 +3008,7 @@ def get_journey_list(advisor_id=None, search=None, niche=None, stage=None) -> li
             SELECT
                 p.id, p.handle, p.name, p.platform, p.niche_segment AS niche,
                 p.icp_score, p.status, p.drafted_message, p.signal_phrase,
-                p.post_text, p.scraped_at,
+                p.post_text, p.created_at AS scraped_at,
                 j.event AS latest_event, j.icon AS latest_icon,
                 j.created_at AS latest_at,
                 (SELECT COUNT(*) FROM journey_events WHERE prospect_id=p.id) AS event_count
@@ -2988,7 +3018,7 @@ def get_journey_list(advisor_id=None, search=None, niche=None, stage=None) -> li
                 ORDER BY created_at DESC LIMIT 1
             )
             WHERE {where}
-            ORDER BY COALESCE(j.created_at, p.scraped_at) DESC
+            ORDER BY COALESCE(j.created_at, p.created_at) DESC
             LIMIT 200
         """), params)
         return _rows(r)

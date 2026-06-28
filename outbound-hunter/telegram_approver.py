@@ -633,27 +633,9 @@ _poll_thread: threading.Thread | None = None
 
 
 def init():
-    """
-    Initialize and start the Telegram bot polling thread.
-    Called once at Flask app startup (from app.py or main.py).
-    No-op if TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID are not set.
-    """
-    global _bot, _poll_thread
-
-    token   = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
-
-    if not token or not chat_id:
-        log.info("[telegram] not configured — set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID to enable")
-        return
-
-    if _bot is not None:
-        return  # already running
-
-    _bot         = _Bot(token, chat_id)
-    _poll_thread = threading.Thread(target=_bot.poll, name="telegram-approver", daemon=True)
-    _poll_thread.start()
-    log.info("[telegram] approver started for chat_id=%s", chat_id)
+    """Telegram integration disabled — all notifications moved to the dashboard."""
+    log.info("[telegram] disabled — use the dashboard for notifications")
+    return
 
 
 def send_for_review(post_id: int | str, post_data: dict):

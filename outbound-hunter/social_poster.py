@@ -72,11 +72,70 @@ def check_reddit_account_health() -> dict:
         return {'ok': True, 'blocked': False, 'warnings': [f'Could not check: {e}'], 'karma': 0, 'age_days': 0}
 
 
+def _get_reddit_creds() -> dict:
+    """Return Reddit credentials — env vars first, then tenant_settings DB."""
+    creds = {
+        'client_id':     os.environ.get('REDDIT_CLIENT_ID', ''),
+        'client_secret': os.environ.get('REDDIT_CLIENT_SECRET', ''),
+        'username':      os.environ.get('REDDIT_USERNAME', ''),
+        'password':      os.environ.get('REDDIT_PASSWORD', ''),
+    }
+    if all(creds.values()):
+        return creds
+    try:
+        from database import get_settings
+        d = get_settings()
+        return {
+            'client_id':     creds['client_id']     or d.get('reddit_client_id', ''),
+            'client_secret': creds['client_secret'] or d.get('reddit_client_secret', ''),
+            'username':      creds['username']       or d.get('reddit_username', ''),
+            'password':      creds['password']       or d.get('reddit_password', ''),
+        }
+    except Exception:
+        return creds
+
+
+def _get_x_creds() -> dict:
+    """Return X credentials — env vars first, then tenant_settings DB."""
+    creds = {
+        'api_key':       os.environ.get('X_API_KEY', ''),
+        'api_secret':    os.environ.get('X_API_SECRET', ''),
+        'access_token':  os.environ.get('X_ACCESS_TOKEN', ''),
+        'access_secret': os.environ.get('X_ACCESS_SECRET', ''),
+    }
+    if all(creds.values()):
+        return creds
+    try:
+        from database import get_settings
+        d = get_settings()
+        return {
+            'api_key':       creds['api_key']       or d.get('x_api_key', ''),
+            'api_secret':    creds['api_secret']    or d.get('x_api_secret', ''),
+            'access_token':  creds['access_token']  or d.get('x_access_token', ''),
+            'access_secret': creds['access_secret'] or d.get('x_access_secret', ''),
+        }
+    except Exception:
+        return creds
+
+
+def reddit_connected() -> bool:
+    """True if Reddit credentials are configured."""
+    c = _get_reddit_creds()
+    return bool(c['client_id'] and c['client_secret'] and c['username'] and c['password'])
+
+
+def x_connected() -> bool:
+    """True if X credentials are configured."""
+    c = _get_x_creds()
+    return bool(c['api_key'] and c['api_secret'] and c['access_token'] and c['access_secret'])
+
+
 def _reddit_access_token() -> str | None:
-    client_id     = os.environ.get('REDDIT_CLIENT_ID', '')
-    client_secret = os.environ.get('REDDIT_CLIENT_SECRET', '')
-    username      = os.environ.get('REDDIT_USERNAME', '')
-    password      = os.environ.get('REDDIT_PASSWORD', '')
+    rc = _get_reddit_creds()
+    client_id     = rc['client_id']
+    client_secret = rc['client_secret']
+    username      = rc['username']
+    password      = rc['password']
 
     if not all([client_id, client_secret, username, password]):
         return None
@@ -199,10 +258,11 @@ def post_to_x(tweets: list) -> dict:
     Post a thread of tweets to X. First tweet is standalone, rest reply in chain.
     Returns { ok, url, thread_id } or { ok: False, error }.
     """
-    api_key       = os.environ.get('X_API_KEY', '')
-    api_secret    = os.environ.get('X_API_SECRET', '')
-    access_token  = os.environ.get('X_ACCESS_TOKEN', '')
-    access_secret = os.environ.get('X_ACCESS_SECRET', '')
+    xc = _get_x_creds()
+    api_key       = xc['api_key']
+    api_secret    = xc['api_secret']
+    access_token  = xc['access_token']
+    access_secret = xc['access_secret']
 
     if not all([api_key, api_secret, access_token, access_secret]):
         return {'ok': False, 'error': 'X credentials missing'}

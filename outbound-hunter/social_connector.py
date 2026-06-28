@@ -42,8 +42,21 @@ import urllib.error
 
 logger = logging.getLogger(__name__)
 
-SCRAPEBADGER_API_KEY  = os.environ.get("SCRAPEBADGER_API_KEY", "")
 SCRAPEBADGER_BASE_URL = os.environ.get("SCRAPEBADGER_BASE_URL", "https://api.scrapebadger.io/v1")
+
+
+def _get_scrapebadger_key() -> str:
+    """Return ScrapeBadger API key — checks env var first, then tenant_settings DB."""
+    key = os.environ.get("SCRAPEBADGER_API_KEY", "")
+    if key:
+        return key
+    try:
+        from database import get_settings
+        d = get_settings()
+        return d.get('scrapebadger_key', '') or ''
+    except Exception:
+        return ''
+
 
 
 class SocialConnector:
@@ -94,7 +107,7 @@ class SocialConnector:
 
     def _fetch_reddit(self, query: str) -> list[dict]:
         """ScrapeBadger first, PRAW fallback."""
-        if SCRAPEBADGER_API_KEY:
+        if _get_scrapebadger_key():
             results = self._scrapebadger("reddit/search", {"query": query, "limit": 25})
             if results is not None:
                 return results
@@ -120,7 +133,7 @@ class SocialConnector:
 
     def _fetch_twitter(self, query: str) -> list[dict]:
         """ScrapeBadger first, Twitter API v2 fallback."""
-        if SCRAPEBADGER_API_KEY:
+        if _get_scrapebadger_key():
             results = self._scrapebadger("twitter/search", {"query": query, "limit": 20})
             if results is not None:
                 return results
@@ -143,11 +156,12 @@ class SocialConnector:
         """
         url  = f"{SCRAPEBADGER_BASE_URL.rstrip('/')}/{endpoint}"
         body = json.dumps(payload).encode()
+        api_key = _get_scrapebadger_key()
         req  = urllib.request.Request(
             url,
             data=body,
             headers={
-                "Authorization": f"Bearer {SCRAPEBADGER_API_KEY}",
+                "Authorization": f"Bearer {api_key}",
                 "Content-Type":  "application/json",
             },
             method="POST",

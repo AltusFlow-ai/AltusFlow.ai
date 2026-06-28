@@ -134,8 +134,12 @@ _BANNED_SUFFIX_SHORT = "BANNED phrases you never use: " + "; ".join(_BANNED[:12]
 def _get_systems(niche: str = None):
     """Return (reddit_system, x_system) for the given niche slug."""
     niche = niche or _DEFAULT_NICHE
-    if niche == 'altusflow':
-        target = _get_altusflow_target()
+    if niche == 'altusflow' or niche.startswith('altusflow-'):
+        if niche.startswith('altusflow-'):
+            target_slug = niche[len('altusflow-'):]
+            target = _TARGET_NICHE_LABELS.get(target_slug, target_slug.replace('-', ' '))
+        else:
+            target = _get_altusflow_target()
         return _get_altusflow_systems(target)
     persona = _NICHE_PERSONAS.get(niche) or _NICHE_PERSONAS[_DEFAULT_NICHE]
     reddit_sys = persona['reddit'] + _BANNED_SUFFIX
@@ -155,21 +159,17 @@ _TARGET_NICHE_LABELS = {
 def _get_client_niche() -> str:
     """
     Return the effective niche slug for content generation.
-    When mode=altusflow, returns 'altusflow' with target baked into the prompt via _get_altusflow_systems().
-    When mode=client, returns the target_niche directly (e.g. 'trading-coaches').
+    Handles new format 'altusflow-trading-coaches' (admin targeting that niche)
+    and plain niche slugs like 'trading-coaches' (posting on behalf of a client).
     """
     try:
-        from database import get_tenant_setting
-        raw = get_tenant_setting('account_settings')
-        if raw:
-            import json as _j
-            d = _j.loads(raw) if isinstance(raw, str) else raw
-            mode = d.get('niche', '')
-            if mode == 'altusflow':
-                return 'altusflow'
-            if mode == 'client':
-                return d.get('target_niche', _DEFAULT_NICHE) or _DEFAULT_NICHE
-            return mode or _DEFAULT_NICHE
+        from database import get_settings
+        d = get_settings()
+        if d:
+            niche = d.get('niche', '')
+            if niche.startswith('altusflow-') or niche == 'altusflow':
+                return niche  # full slug passed through to _get_systems()
+            return niche or _DEFAULT_NICHE
     except Exception:
         pass
     return _DEFAULT_NICHE
@@ -218,11 +218,24 @@ _X_SYSTEM      = _get_systems()[1]
 
 _last_claude_error: str = ''
 
+def _get_anthropic_key() -> str:
+    """Return Anthropic API key — checks env var first, then tenant_settings DB."""
+    key = os.environ.get('ANTHROPIC_API_KEY', '')
+    if key:
+        return key
+    try:
+        from database import get_settings
+        d = get_settings()
+        return d.get('anthropic_key', '') or ''
+    except Exception:
+        return ''
+
+
 def _call_claude(prompt: str, max_tokens: int = 1400, system: str = None) -> str | None:
     global _last_claude_error
-    api_key = os.environ.get('ANTHROPIC_API_KEY', '')
+    api_key = _get_anthropic_key()
     if not api_key:
-        _last_claude_error = 'ANTHROPIC_API_KEY is not set in Railway env vars'
+        _last_claude_error = 'Anthropic API key is not set — add it in Settings → Account'
         return None
     try:
         import urllib.request as _ur
@@ -386,8 +399,12 @@ def generate_targeted_post(signal: str, subreddit: str, example_post: str = '', 
     """
     niche = niche or _get_client_niche()
     reddit_system, _ = _get_systems(niche)
-    if niche == 'altusflow':
-        target    = _get_altusflow_target()
+    if niche == 'altusflow' or niche.startswith('altusflow-'):
+        if niche.startswith('altusflow-'):
+            target_slug = niche[len('altusflow-'):]
+            target = _TARGET_NICHE_LABELS.get(target_slug, target_slug.replace('-', ' '))
+        else:
+            target = _get_altusflow_target()
         audience  = target
         context   = f'client acquisition and business growth for {target}'
     else:
@@ -463,8 +480,12 @@ def generate_targeted_x_thread(signal: str, niche: str = None, example_post: str
     """
     niche = niche or _get_client_niche()
     _, x_system = _get_systems(niche)
-    if niche == 'altusflow':
-        target   = _get_altusflow_target()
+    if niche == 'altusflow' or niche.startswith('altusflow-'):
+        if niche.startswith('altusflow-'):
+            target_slug = niche[len('altusflow-'):]
+            target = _TARGET_NICHE_LABELS.get(target_slug, target_slug.replace('-', ' '))
+        else:
+            target = _get_altusflow_target()
         audience = target
         context  = f'client acquisition and business growth for {target}'
     else:
