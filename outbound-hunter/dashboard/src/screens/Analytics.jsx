@@ -58,7 +58,7 @@ export default function Analytics() {
         </div>
         <div className="funnel-step">
           <div className="funnel-label">Contacted</div>
-          <div className="funnel-bar-wrap"><div className="funnel-bar" style={{ width: `${pct(contacted, scraped)}%` }}>{contacted} · 100%</div></div>
+          <div className="funnel-bar-wrap"><div className="funnel-bar" style={{ width: `${pct(contacted, scraped)}%` }}>{contacted} · {pct(contacted, scraped)}%</div></div>
         </div>
         <div className="funnel-step">
           <div className="funnel-label">Engaged</div>
@@ -66,11 +66,13 @@ export default function Analytics() {
         </div>
         <div className="funnel-step">
           <div className="funnel-label">Booked</div>
-          <div className="funnel-bar-wrap"><div className="funnel-bar drop" style={{ width: `${Math.max(7, pct(booked, scraped))}%`, opacity: booked === 0 ? 0.5 : 1 }}>{booked}</div></div>
+          <div className="funnel-bar-wrap"><div className="funnel-bar drop" style={{ width: `${pct(booked, scraped)}%`, opacity: booked === 0 ? 0.4 : 1 }}>{booked}</div></div>
         </div>
-        <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 12, background: 'var(--bg-secondary)', padding: 10, borderRadius: 'var(--radius-md)' }}>
-          💡 Diagnosis: Contacted to Engaged drop is the focus area — message quality or follow-up timing. Consider reviewing drafted message style or tightening signal phrases.
-        </div>
+        {scraped === 0 && (
+          <div style={{ fontSize: 11, color: 'var(--text-tertiary)', marginTop: 12, padding: '10px 0' }}>
+            No data yet — funnel will populate after your first scan runs.
+          </div>
+        )}
       </div>
 
       <div className="card">
