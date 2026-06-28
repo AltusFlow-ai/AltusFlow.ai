@@ -81,10 +81,20 @@ def _run_pipeline():
             tenants = []
 
         if not tenants:
-            # Legacy single-tenant mode — no master DB, run once with env var config
-            logger.info("No tenants in master DB — running in single-tenant mode.")
-            _run_tenant_pipeline(None)
-            return
+            # Try to auto-detect tenant slugs from the tenants/ directory on disk.
+            # This covers Railway deploys where master_db hasn't been seeded yet
+            # but a tenant DB already exists from a previous create_admin.py run.
+            import glob as _glob
+            found = sorted(_glob.glob(os.path.join("tenants", "*", "outbound_hunter.db")))
+            if found:
+                tenants = [{"slug": os.path.basename(os.path.dirname(p))} for p in found]
+                logger.info("Auto-detected %d tenant(s) from filesystem: %s",
+                            len(tenants), [t["slug"] for t in tenants])
+            else:
+                # True legacy single-tenant mode — no tenant dirs at all
+                logger.info("No tenants found — running in single-tenant mode (no DB context).")
+                _run_tenant_pipeline(None)
+                return
 
         # ── Multi-tenant: run for each active tenant ──────────────────────────
         for tenant in tenants:
@@ -548,6 +558,31 @@ def stop():
     if _scheduler and _scheduler.running:
         _scheduler.shutdown(wait=False)
         logger.info("Scheduler stopped.")
+
+
+def is_running() -> bool:
+    """Return True if a scan is currently in progress."""
+    return bool(_is_running)
+
+
+def pause_pod(slug: str):
+    """Pause a specific pod (delegates to global pause for now)."""
+    pause(reason=f"Pod {slug} paused by admin")
+
+
+def resume_pod(slug: str):
+    """Resume a specific pod."""
+    resume()
+
+
+def reset_circuit_breaker(slug: str):
+    """Reset circuit breaker for a pod — clears pause state."""
+    resume()
+
+
+def run_pod_now(slug: str):
+    """Trigger an immediate scan for a specific pod."""
+    return run_now()
 
 
 def run_now():

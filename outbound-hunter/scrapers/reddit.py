@@ -22,12 +22,55 @@ import time
 import requests
 
 # ── Env vars ───────────────────────────────────────────────────────────────────
-SCRAPEBADGER_API_KEY = os.environ.get("SCRAPEBADGER_API_KEY", "")
-REDDIT_CLIENT_ID     = os.environ.get("REDDIT_CLIENT_ID", "")
-REDDIT_CLIENT_SECRET = os.environ.get("REDDIT_CLIENT_SECRET", "")
-REDDIT_USERNAME      = os.environ.get("REDDIT_USERNAME", "")
-REDDIT_PASSWORD      = os.environ.get("REDDIT_PASSWORD", "")
+# SCRAPEBADGER_API_KEY is read dynamically (see _get_api_key) so that keys
+# saved via the Settings dashboard are picked up by background scan threads.
 REDDIT_USER_AGENT    = os.environ.get("REDDIT_USER_AGENT", "AltusFlowHunter/1.0")
+
+
+def _get_reddit_creds() -> dict:
+    """Read Reddit OAuth creds fresh each call: env first, then tenant_settings DB."""
+    client_id     = os.environ.get("REDDIT_CLIENT_ID", "")
+    client_secret = os.environ.get("REDDIT_CLIENT_SECRET", "")
+    username      = os.environ.get("REDDIT_USERNAME", "")
+    password      = os.environ.get("REDDIT_PASSWORD", "")
+    if client_id and client_secret and username and password:
+        return {"client_id": client_id, "client_secret": client_secret,
+                "username": username, "password": password}
+    try:
+        from database import get_settings
+        s = get_settings()
+        return {
+            "client_id":     s.get("reddit_client_id", "")     or "",
+            "client_secret": s.get("reddit_client_secret", "") or "",
+            "username":      s.get("reddit_username", "")      or "",
+            "password":      s.get("reddit_password", "")      or "",
+        }
+    except Exception:
+        return {"client_id": "", "client_secret": "", "username": "", "password": ""}
+
+
+# Module-level aliases kept for backward compatibility — do not use directly.
+REDDIT_CLIENT_ID     = ""
+REDDIT_CLIENT_SECRET = ""
+REDDIT_USERNAME      = ""
+REDDIT_PASSWORD      = ""
+
+
+def _get_api_key() -> str:
+    """Read ScrapeBadger key fresh each call: env var first, then tenant_settings DB."""
+    key = os.environ.get("SCRAPEBADGER_API_KEY", "")
+    if key:
+        return key
+    try:
+        from database import get_settings
+        return get_settings().get("scrapebadger_key", "") or ""
+    except Exception:
+        return ""
+
+
+# Module-level alias kept for any external callers that reference it directly.
+# Always call _get_api_key() internally so background threads see the live value.
+SCRAPEBADGER_API_KEY = ""  # resolved dynamically — do not use directly
 
 SCRAPEBADGER_BASE = "https://api.scrapebadger.com/v1/reddit"
 
@@ -67,7 +110,7 @@ except Exception:
 def _session() -> requests.Session:
     s = requests.Session()
     s.headers.update({
-        "Authorization": f"Bearer {SCRAPEBADGER_API_KEY}",
+        "Authorization": f"Bearer {_get_api_key()}",
         "User-Agent": REDDIT_USER_AGENT,
     })
     return s
@@ -77,31 +120,30 @@ def _session() -> requests.Session:
 
 def get_reddit_client():
     """Kept for backward compatibility — returns a truthy sentinel."""
-    return _session() if SCRAPEBADGER_API_KEY else None
+    return _session() if _get_api_key() else None
 
 
 # ── DM sending (optional — requires PRAW + full Reddit credentials) ────────────
 
 def _can_send_dms() -> bool:
-    return bool(
-        REDDIT_USERNAME and REDDIT_PASSWORD
-        and REDDIT_CLIENT_ID and REDDIT_CLIENT_SECRET
-    )
+    c = _get_reddit_creds()
+    return bool(c["client_id"] and c["client_secret"] and c["username"] and c["password"])
 
 
 def send_reddit_dm(username: str, subject: str, body: str) -> dict:
     if not _can_send_dms():
         return {
             "ok": False,
-            "error": "Reddit DM sending requires REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USERNAME, REDDIT_PASSWORD in env.",
+            "error": "Reddit DM sending requires REDDIT_CLIENT_ID, REDDIT_CLIENT_SECRET, REDDIT_USERNAME, REDDIT_PASSWORD — paste them in Settings → Connections.",
         }
     try:
+        c = _get_reddit_creds()
         import praw
         reddit = praw.Reddit(
-            client_id=REDDIT_CLIENT_ID,
-            client_secret=REDDIT_CLIENT_SECRET,
-            username=REDDIT_USERNAME,
-            password=REDDIT_PASSWORD,
+            client_id=c["client_id"],
+            client_secret=c["client_secret"],
+            username=c["username"],
+            password=c["password"],
             user_agent=REDDIT_USER_AGENT,
         )
         reddit.redditor(username).message(subject=subject, message=body)
@@ -118,11 +160,11 @@ def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
     GET a ScrapeBadger Reddit endpoint with retry on 429.
     Endpoint is relative to SCRAPEBADGER_BASE, e.g. '/search/posts'.
     """
-    if not SCRAPEBADGER_API_KEY:
+    if not _get_api_key():
         _log_error(
             run_id, "reddit_scraper",
             "SCRAPEBADGER_API_KEY not set — Reddit scraping skipped. "
-            "Add it to Railway env vars.",
+            "Add it to Railway env vars or paste it in Settings → Connections.",
             _CRIT,
         )
         return None
@@ -319,11 +361,11 @@ def run_niche_search(niche_slug: str, run_id=None) -> list:
     """Scan all subreddits for a single niche."""
     from scrapers.niches import get_reddit_subreddits, get_signal_phrases
 
-    if not SCRAPEBADGER_API_KEY:
+    if not _get_api_key():
         _log_error(
             run_id, "reddit_scraper",
             "SCRAPEBADGER_API_KEY not configured — Reddit scan skipped. "
-            "Add it to Railway env vars (scrapebadger.com).",
+            "Add it to Railway env vars or paste it in Settings → Connections.",
             _CRIT,
         )
         return []
