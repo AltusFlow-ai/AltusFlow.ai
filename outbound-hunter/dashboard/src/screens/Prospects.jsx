@@ -611,14 +611,19 @@ export default function Prospects() {
   }
 
   const tabCounts = {
-    pending_review: stats.pending_review ?? 8,
-    auto_approved:  stats.auto_approved  ?? 6,
-    sent:           stats.sent_week      ?? 47,
-    replied:        stats.replied_week   ?? 12,
+    pending_review: stats.pending_review ?? 0,
+    auto_approved:  stats.auto_approved  ?? 0,
+    sent:           stats.sent_week      ?? 0,
+    replied:        stats.replied_week   ?? 0,
     booked:         stats.booked         ?? 0,
   }
 
-  const nicheCountMap = { all: 14, fa: 8, tc: 4, rc: 2, cre: 0, msp: 0 }
+  const nicheCountMap = {
+    all: prospects.length,
+    ...Object.fromEntries(
+      ['fa','tc','rc','cre','msp'].map(k => [k, prospects.filter(p => (NICHE_CLASS[p.niche] || 'fa') === k).length])
+    ),
+  }
 
   const filtered = niche === 'all'
     ? prospects
@@ -634,23 +639,23 @@ export default function Prospects() {
       <div className="stat-grid">
         <div className="stat-card rag-green">
           <div className="stat-label">Found today</div>
-          <div className="stat-value">{stats.found_today ?? 14}</div>
-          <div className="stat-delta up">↑ 3 vs yesterday</div>
+          <div className="stat-value">{stats.found_today ?? 0}</div>
+          <div className="stat-delta">vs yesterday</div>
         </div>
         <div className="stat-card rag-green">
           <div className="stat-label">Auto-approved</div>
-          <div className="stat-value">{stats.auto_approved ?? 6}</div>
+          <div className="stat-value">{stats.auto_approved ?? 0}</div>
           <div className="stat-delta">Score 9+ auto-queued</div>
         </div>
         <div className="stat-card rag-amber">
           <div className="stat-label">Pending review</div>
-          <div className="stat-value">{stats.pending_review ?? 8}</div>
+          <div className="stat-value">{stats.pending_review ?? 0}</div>
           <div className="stat-delta">Score 4–8 needs you</div>
         </div>
         <div className="stat-card rag-green">
           <div className="stat-label">Reply rate</div>
-          <div className="stat-value">{stats.reply_rate ?? 25}%</div>
-          <div className="stat-delta up">{stats.sent_week ?? 47} sent · {stats.replied_week ?? 12} replied</div>
+          <div className="stat-value">{stats.reply_rate ?? 0}%</div>
+          <div className="stat-delta">{stats.sent_week ?? 0} sent · {stats.replied_week ?? 0} replied</div>
         </div>
       </div>
 
