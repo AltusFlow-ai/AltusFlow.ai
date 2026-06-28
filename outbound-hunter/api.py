@@ -2364,17 +2364,6 @@ def _ensure_creator_table():
 
 # ── Live Stream ───────────────────────────────────────────────────────────────
 
-@api.route('/stream/status')
-@login_required
-def stream_status():
-    """Real-time stream health — shown in dashboard topbar."""
-    try:
-        from stream_watcher import get_stream_status
-        return jsonify(get_stream_status())
-    except Exception:
-        return jsonify({'running': False, 'error': 'stream_watcher not loaded'})
-
-
 @api.route('/stream/start', methods=['POST'])
 @login_required
 def stream_start():
