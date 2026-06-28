@@ -754,7 +754,7 @@ function PostCard({ post, onUpdate }) {
       )}
 
       {/* Signal pills */}
-      {post.signals && post.signals.length > 0 && !editing && (
+      {Array.isArray(post.signals) && post.signals.length > 0 && !editing && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
           <span style={{ fontSize: 10, color: 'var(--text-tertiary)', alignSelf: 'center' }}>Signals:</span>
           {post.signals.slice(0, 8).map((s, i) => (

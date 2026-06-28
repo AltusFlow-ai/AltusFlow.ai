@@ -3585,7 +3585,15 @@ def get_value_posts(client_id: str = None, subreddit: str = None, limit: int = 5
                     SELECT * FROM value_posts WHERE client_id=:cid
                     ORDER BY created_at DESC LIMIT :lim
                 """), {"cid": cid, "lim": limit})
-            return _rows(r)
+            rows = _rows(r)
+        # Parse JSON-encoded fields so the frontend receives native types
+        for row in rows:
+            if isinstance(row.get('signals'), str):
+                try:
+                    row['signals'] = json.loads(row['signals'])
+                except Exception:
+                    row['signals'] = []
+        return rows
     except Exception:
         return []
 
