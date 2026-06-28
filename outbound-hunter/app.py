@@ -1033,7 +1033,10 @@ def dashboard(path=None):
     dash_path = os.path.join(app.static_folder, "dashboard", "index.html")
     if not os.path.exists(dash_path):
         return flask.abort(503, "Dashboard not built yet — run: cd dashboard && npm run build")
-    return flask.send_file(dash_path)
+    resp = flask.send_file(dash_path)
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    return resp
 
 
 # ── Boot ──────────────────────────────────────────────────────────────────────

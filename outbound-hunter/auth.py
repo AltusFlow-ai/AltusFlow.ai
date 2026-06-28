@@ -89,9 +89,6 @@ def load_user(user_id):
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login():
-    if current_user.is_authenticated:
-        return redirect(url_for("index"))
-
     error = None
     if request.method == "POST":
         from master_db import verify_password
@@ -112,8 +109,8 @@ def login():
 def logout():
     logout_user()
     resp = redirect(url_for("auth.login"))
-    resp.delete_cookie("remember_token")
-    resp.delete_cookie("session")
+    for name in list(request.cookies.keys()):
+        resp.delete_cookie(name, path="/")
     return resp
 
 
