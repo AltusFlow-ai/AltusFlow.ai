@@ -36,6 +36,11 @@
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* Native select/option — force dark theme so options are readable without hover */
+select { color-scheme: dark; }
+select option { background: #1a1a1a; color: #ffffff; }
+
 body {
   font-family: 'Inter', -apple-system, sans-serif;
   background: var(--bg-primary);

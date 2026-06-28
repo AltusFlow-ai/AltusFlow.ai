@@ -1435,6 +1435,217 @@ def save_notification_settings(client_id: str, prefs: dict) -> bool:
         return False
 
 
+def get_settings(client_id: str = None) -> dict:
+    """Return general account settings (niche, business name, etc.) from tenant_settings."""
+    import json as _json
+    try:
+        with _reader() as conn:
+            row = conn.execute(
+                text("SELECT value FROM tenant_settings WHERE key='account_settings'")
+            ).fetchone()
+        if row and row[0]:
+            return _json.loads(row[0])
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[db] get_settings failed: {e}")
+    return {}
+
+
+def save_settings(client_id: str, data: dict) -> bool:
+    """Persist general account settings to tenant_settings."""
+    import json as _json
+    try:
+        value = _json.dumps(data)
+        set_tenant_setting('account_settings', value)
+        return True
+    except Exception as e:
+        import traceback; traceback.print_exc()
+        print(f"[db] save_settings failed: {e}")
+        return False
+
+
+def get_connections(client_id: str = None) -> dict:
+    """Return integration connection status. Reads live env vars — no DB needed."""
+    import os
+    return {
+        'anthropic':    bool(os.environ.get('ANTHROPIC_API_KEY')),
+        'scrapebadger': bool(os.environ.get('SCRAPEBADGER_API_KEY')),
+        'hubspot':      bool(os.environ.get('HUBSPOT_TOKEN')),
+        'twitter':      bool(os.environ.get('TWITTER_BEARER_TOKEN')),
+    }
+
+
+# ── Aliases / thin wrappers so api.py import block succeeds ───────────────────
+
+def get_prospects(advisor_id=None, niche=None, status=None, tab=None, limit=200):
+    """Unified prospect query wrapping get_pending/get_approved/get_auto_approved."""
+    try:
+        with _reader() as conn:
+            clauses = []
+            params = {}
+            if advisor_id:
+                clauses.append("client_id = :cid"); params['cid'] = advisor_id
+            if niche:
+                clauses.append("niche = :niche"); params['niche'] = niche
+            if status:
+                clauses.append("status = :status"); params['status'] = status
+            where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
+            rows = conn.execute(text(f"SELECT * FROM prospects {where} ORDER BY scraped_at DESC LIMIT :lim"),
+                                {**params, 'lim': limit}).fetchall()
+            return [dict(r._mapping) for r in rows]
+    except Exception as e:
+        print(f"[db] get_prospects failed: {e}")
+        return []
+
+
+def get_prospect_by_id(prospect_id):
+    return get_prospect(prospect_id)
+
+
+def approve_prospect(prospect_id):
+    return update_status(prospect_id, 'approved')
+
+
+def skip_prospect(prospect_id):
+    return update_status(prospect_id, 'skipped')
+
+
+def get_pipeline_stages(advisor_id=None):
+    return []
+
+
+def get_daily_chart(advisor_id=None, days=30):
+    return []
+
+
+def get_subreddit_breakdown(advisor_id=None):
+    return []
+
+
+def get_funnel_stats(advisor_id=None):
+    return {}
+
+
+def get_analytics_metrics(advisor_id=None):
+    return {}
+
+
+def get_speed_to_touch(advisor_id=None):
+    return {}
+
+
+def get_budget_summary(advisor_id=None):
+    return {}
+
+
+def get_transactions(advisor_id=None):
+    return []
+
+
+def get_signal_phrase_performance(advisor_id=None):
+    return []
+
+
+def get_platform_performance(advisor_id=None):
+    return []
+
+
+def get_all_clients():
+    try:
+        with _reader() as conn:
+            rows = conn.execute(text("SELECT id, email, company_name, role, plan, tenant_slug FROM users ORDER BY id")).fetchall()
+            return [dict(r._mapping) for r in rows]
+    except Exception as e:
+        print(f"[db] get_all_clients failed: {e}")
+        return []
+
+
+def create_client(name: str, email: str, niche: str = '') -> str:
+    """Create a new user/client. Returns the new user id."""
+    import hashlib, secrets
+    try:
+        uid = hashlib.md5(email.encode()).hexdigest()[:12]
+        with _writer() as conn:
+            conn.execute(text("""
+                INSERT OR IGNORE INTO users (id, email, company_name, role, plan)
+                VALUES (:id, :email, :name, 'client', 'starter')
+            """), {'id': uid, 'email': email, 'name': name})
+        return uid
+    except Exception as e:
+        print(f"[db] create_client failed: {e}")
+        return ''
+
+
+def get_pod_statuses(advisor_id=None):
+    return get_pod_statuses_inner(advisor_id) if False else []
+
+
+def get_all_calls(advisor_id=None):
+    return get_voice_calls(advisor_id)
+
+
+def get_call_by_id(call_id):
+    try:
+        with _reader() as conn:
+            row = conn.execute(text("SELECT * FROM voice_calls WHERE id=:id"), {'id': call_id}).fetchone()
+            return dict(row._mapping) if row else None
+    except Exception:
+        return None
+
+
+def save_call_notes(call_id, notes):
+    try:
+        with _writer() as conn:
+            conn.execute(text("UPDATE voice_calls SET notes=:n WHERE id=:id"), {'n': notes, 'id': call_id})
+        return True
+    except Exception:
+        return False
+
+
+def link_call_prospect(call_id, prospect_id):
+    try:
+        with _writer() as conn:
+            conn.execute(text("UPDATE voice_calls SET prospect_id=:pid WHERE id=:id"), {'pid': prospect_id, 'id': call_id})
+        return True
+    except Exception:
+        return False
+
+
+def get_reports(advisor_id=None):
+    return []
+
+
+def get_report_path(report_id):
+    return None
+
+
+def get_team(advisor_id=None):
+    return []
+
+
+def invite_team_member(advisor_id, email, role='member'):
+    return False
+
+
+def remove_team_member(advisor_id, member_id):
+    return False
+
+
+def get_niches_with_counts(advisor_id=None):
+    try:
+        with _reader() as conn:
+            rows = conn.execute(text("""
+                SELECT COALESCE(niche_segment, niche, 'unknown') AS niche, COUNT(*) AS cnt
+                FROM prospects
+                GROUP BY niche
+                ORDER BY cnt DESC
+            """)).fetchall()
+            return [{'niche': r[0], 'count': r[1]} for r in rows]
+    except Exception as e:
+        print(f"[db] get_niches_with_counts failed: {e}")
+        return []
+
+
 def get_sent_log_for_compliance(limit: int = 1000):
     """
     Return sent_log rows joined with prospect details for compliance export.

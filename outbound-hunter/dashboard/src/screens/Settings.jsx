@@ -403,6 +403,14 @@ function AccountTab() {
     </div>
   )
 
+  const NICHES = [
+    { value: 'trading-coaches',    label: 'Trading Coach' },
+    { value: 'financial-advisors', label: 'Financial Advisor' },
+    { value: 'fitness-coaches',    label: 'Fitness Coach' },
+    { value: 'recruiters',         label: 'Recruiter' },
+    { value: 'real-estate',        label: 'Real Estate Investor' },
+  ]
+
   return (
     <div style={{ maxWidth: 520 }}>
       <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 16 }}>Account</div>
@@ -410,6 +418,18 @@ function AccountTab() {
       {field('website',       'Website',          'https://altusflow.ai', 'url')}
       {field('calendly_url',  'Calendly URL',     'https://calendly.com/yourname/discovery', 'url')}
       {field('reply_email',   'Reply-from Email', 'hello@altusflow.ai',   'email')}
+      <div style={{ marginBottom: 14 }}>
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Client Niche</label>
+        <select
+          value={form.niche || ''}
+          onChange={e => setForm(f => ({ ...f, niche: e.target.value }))}
+          style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: 'var(--text-primary)', fontFamily: 'inherit' }}
+        >
+          <option value=''>Select a niche…</option>
+          {NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+        </select>
+        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Controls the tone and context of all AI-generated content</div>
+      </div>
       <button onClick={save} disabled={saving} style={{
         background: 'var(--teal)', color: '#fff', border: 'none', borderRadius: 7,
         padding: '8px 20px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',

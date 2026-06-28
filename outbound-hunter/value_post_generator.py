@@ -27,22 +27,116 @@ _BANNED = [
     "I'd like to share", "I want to start by", "community", "insights to share",
 ]
 
-_REDDIT_SYSTEM = (
-    "You are a profitable day trader who posts in trading subreddits because you genuinely want the "
-    "community to improve — not to sell anything. Your posts get saved because they're dense with "
-    "specific, actionable observations. You write in plain, direct language: short paragraphs, bold "
-    "for key points, specific numbers and scenarios. You never mention coaching, services, DMs, or links. "
-    "You never write vague generalisations. Every sentence earns its place. "
-    "BANNED phrases you never use: " + "; ".join(_BANNED)
-)
+_NICHE_PERSONAS = {
+    'trading-coaches': {
+        'reddit': (
+            "You are a profitable day trader who posts in trading subreddits because you genuinely want the "
+            "community to improve — not to sell anything. Your posts get saved because they're dense with "
+            "specific, actionable observations. You write in plain, direct language: short paragraphs, bold "
+            "for key points, specific numbers and scenarios. You never mention coaching, services, DMs, or links. "
+            "You never write vague generalisations. Every sentence earns its place. "
+        ),
+        'x': (
+            "You are a profitable trader with a sharp, direct voice on X. Your threads go viral because "
+            "every tweet delivers one concrete idea — no filler, no hedging, no platitudes. "
+            "You use real trader language: specific P&L numbers, actual ticker scenarios, the exact words "
+            "traders use when a trade is going wrong. You never hashtag. You never self-promote. "
+        ),
+        'audience': 'traders',
+        'context': 'trading and markets',
+    },
+    'financial-advisors': {
+        'reddit': (
+            "You are a fee-only financial planner who posts in personal finance communities to genuinely help people — "
+            "not to pitch anything. Your posts are specific, actionable, and grounded in real numbers. "
+            "You write in plain language: short paragraphs, bold for key points, concrete scenarios. "
+            "You never mention your services, DMs, or links. No vague generalisations. Every sentence earns its place. "
+        ),
+        'x': (
+            "You are a financial advisor with a sharp, no-nonsense voice on X. Your threads earn saves because "
+            "every tweet delivers one concrete insight about money, investing, or financial planning. "
+            "You use real numbers and scenarios. No hashtags. No self-promotion. "
+        ),
+        'audience': 'people navigating personal finance',
+        'context': 'personal finance, investing, and wealth building',
+    },
+    'fitness-coaches': {
+        'reddit': (
+            "You are an experienced personal trainer who posts in fitness communities to genuinely help people — "
+            "not to sell anything. Your posts are specific, practical, and grounded in real training principles. "
+            "You write in plain, direct language: short paragraphs, bold for key points, concrete examples. "
+            "You never mention coaching, services, DMs, or links. Every sentence earns its place. "
+        ),
+        'x': (
+            "You are a fitness coach with a direct, no-BS voice on X. Your threads get saves because "
+            "every tweet delivers one concrete training or nutrition insight. "
+            "You use real numbers, specific protocols, the exact language gym-goers use. No hashtags. No self-promotion. "
+        ),
+        'audience': 'people training and focused on fitness',
+        'context': 'fitness, training, and nutrition',
+    },
+    'recruiters': {
+        'reddit': (
+            "You are a senior recruiter who posts in career and job-seeking communities to genuinely help candidates — "
+            "not to pitch anything. Your posts are specific, tactical, and based on real hiring patterns. "
+            "You write in plain language: short paragraphs, bold for key points, real examples from your hiring experience. "
+            "You never mention your agency, DMs, or links. Every sentence earns its place. "
+        ),
+        'x': (
+            "You are a recruiter with a sharp, direct voice on X. Your threads earn saves because "
+            "every tweet delivers one concrete insight about landing jobs, acing interviews, or navigating the job market. "
+            "Real numbers, specific tactics, the exact language job-seekers use. No hashtags. No self-promotion. "
+        ),
+        'audience': 'job seekers and career builders',
+        'context': 'job searching, hiring, and career development',
+    },
+    'real-estate': {
+        'reddit': (
+            "You are an experienced real estate investor who posts in property communities to genuinely help others — "
+            "not to pitch anything. Your posts are specific, numbers-driven, and grounded in real deal experience. "
+            "You write in plain language: short paragraphs, bold for key points, concrete scenarios with real numbers. "
+            "You never mention your business, DMs, or links. Every sentence earns its place. "
+        ),
+        'x': (
+            "You are a real estate investor with a sharp, direct voice on X. Your threads get saves because "
+            "every tweet delivers one concrete insight about deals, markets, or investing. "
+            "Real cap rates, specific scenarios, the exact language investors use. No hashtags. No self-promotion. "
+        ),
+        'audience': 'real estate investors and buyers',
+        'context': 'real estate investing and property',
+    },
+}
 
-_X_SYSTEM = (
-    "You are a profitable trader with a sharp, direct voice on X. Your threads go viral because "
-    "every tweet delivers one concrete idea — no filler, no hedging, no platitudes. "
-    "You use real trader language: specific P&L numbers, actual ticker scenarios, the exact words "
-    "traders use when a trade is going wrong. You never hashtag. You never self-promote. "
-    "BANNED phrases you never use: " + "; ".join(_BANNED[:12])
-)
+_DEFAULT_NICHE = 'trading-coaches'
+
+_BANNED_SUFFIX = "BANNED phrases you never use: " + "; ".join(_BANNED)
+_BANNED_SUFFIX_SHORT = "BANNED phrases you never use: " + "; ".join(_BANNED[:12])
+
+
+def _get_systems(niche: str = None):
+    """Return (reddit_system, x_system) for the given niche slug."""
+    persona = _NICHE_PERSONAS.get(niche or _DEFAULT_NICHE) or _NICHE_PERSONAS[_DEFAULT_NICHE]
+    reddit_sys = persona['reddit'] + _BANNED_SUFFIX
+    x_sys      = persona['x']      + _BANNED_SUFFIX_SHORT
+    return reddit_sys, x_sys
+
+
+def _get_client_niche() -> str:
+    """Pull the client's configured niche from tenant settings. Falls back to trading-coaches."""
+    try:
+        from database import get_tenant_setting
+        raw = get_tenant_setting('account_settings')
+        if raw:
+            import json as _j
+            d = _j.loads(raw) if isinstance(raw, str) else raw
+            return d.get('niche', _DEFAULT_NICHE) or _DEFAULT_NICHE
+    except Exception:
+        pass
+    return _DEFAULT_NICHE
+
+
+_REDDIT_SYSTEM = _get_systems()[0]
+_X_SYSTEM      = _get_systems()[1]
 
 
 _last_claude_error: str = ''
@@ -208,11 +302,17 @@ Also write an image_prompt on the LAST line: a striking visual concept — annot
     }
 
 
-def generate_targeted_post(signal: str, subreddit: str, example_post: str = '') -> dict | None:
+def generate_targeted_post(signal: str, subreddit: str, example_post: str = '', niche: str = None) -> dict | None:
     """
     Value post laser-focused on one specific pain signal.
     Used by batch generation and signal-triggered auto-generate.
     """
+    niche = niche or _get_client_niche()
+    reddit_system, _ = _get_systems(niche)
+    persona   = _NICHE_PERSONAS.get(niche) or _NICHE_PERSONAS[_DEFAULT_NICHE]
+    audience  = persona['audience']
+    context   = persona['context']
+
     example_section = (
         f'\nReal post from this community that triggered this signal:\n"{example_post}"\n'
         if example_post else ''
@@ -220,34 +320,35 @@ def generate_targeted_post(signal: str, subreddit: str, example_post: str = '') 
 
     prompt = f"""Subreddit: r/{subreddit}
 Pain signal to address: "{signal}"
+Audience: {audience} in the {context} space
 {example_section}
-Write a Reddit post targeting traders experiencing exactly this problem.
+Write a Reddit post for people experiencing exactly this problem.
 
-TITLE: Name this exact pain in a way that makes traders think "this is about me."
+TITLE: Name this exact pain in a way that makes the reader think "this is about me."
 Don't be generic. Make it specific to "{signal}".
 Examples:
-- "If you've ever {signal} and doubled down, read this before your next trade"
-- "Why {signal} keeps happening — and the one rule that actually stops it"
+- "If you've ever {signal} and made it worse, read this"
+- "Why {signal} keeps happening — and the one change that actually stops it"
 
 BODY structure:
-1. Open by describing the exact experience — what it feels like, the inner monologue, the specific moment it happens. Make traders feel seen in the first 2 sentences.
+1. Open by describing the exact experience — what it feels like, the inner monologue, the specific moment it happens. Make the reader feel seen in the first 2 sentences.
 2. Explain WHY this pattern happens. The psychological or structural root cause. Be specific.
 3. Give 3–4 concrete, actionable insights around this exact problem. Each insight should:
-   - Reference a specific scenario or number traders will recognise
-   - Be something a trader can implement in their very next session
-4. End with a discussion question that draws out comments from traders fighting this exact battle.
+   - Reference a specific scenario or number the reader will recognise
+   - Be something they can implement immediately
+4. End with a discussion question that draws out comments from people fighting this exact battle.
 
 RULES:
 - Zero self-promotion, no DMs, no links, no coaching references
 - Use specific numbers and scenarios — not vague language
 - Short paragraphs, **bold** for key points
-- Write like you've been in this exact situation
+- Write like you've lived this exact situation
 
 Format: Title on line 1, blank line, body. Return ONLY the post.
 
-Also write an image_prompt on the LAST line: a striking visual for this post — a specific trading scenario, chart pattern, or emotional moment. Under 60 words. No text. Format: IMAGE_PROMPT: <description>"""
+Also write an image_prompt on the LAST line: a striking visual for this post — a specific scenario, emotional moment, or scene from the {context} world. Under 60 words. No text. Format: IMAGE_PROMPT: <description>"""
 
-    content = _call_claude(prompt, max_tokens=1500, system=_REDDIT_SYSTEM)
+    content = _call_claude(prompt, max_tokens=1500, system=reddit_system)
     if not content:
         return None
 
@@ -273,43 +374,46 @@ Also write an image_prompt on the LAST line: a striking visual for this post —
     }
 
 
-def generate_targeted_x_thread(signal: str, niche: str = 'trading', example_post: str = '') -> dict | None:
+def generate_targeted_x_thread(signal: str, niche: str = None, example_post: str = '') -> dict | None:
     """
     6-tweet X thread laser-targeted at one pain signal.
     Also returns image_prompt for automated visual generation.
     """
+    niche = niche or _get_client_niche()
+    _, x_system = _get_systems(niche)
+    persona  = _NICHE_PERSONAS.get(niche) or _NICHE_PERSONAS[_DEFAULT_NICHE]
+    audience = persona['audience']
+    context  = persona['context']
+
     example_section = (
         f'\nReal community post that surfaced this signal: "{example_post}"\n'
         if example_post else ''
     )
 
     prompt = f"""Pain signal to address: "{signal}"
-Niche: {niche} trading
+Audience: {audience} in the {context} space
 {example_section}
 Write a 6-tweet X thread. Each tweet must stand alone.
 
 Tweet 1 (hook): Open by naming this exact experience with a punchy, scroll-stopping line.
-Format options: "X traders I watch did [signal] this week. Here's what they all had in common."
-Or start with the specific moment: "You're down $800. You tell yourself one more trade will fix it."
-Under 240 chars. Make the reader think "this is me."
+Make the reader think "this is me." Under 240 chars.
 
 Tweets 2–5: One concrete, specific insight per tweet on this exact problem.
-- Use real numbers and scenarios: "down 3R", "ES gaps up 8 points", "$400 turned into $1,800 loss in 11 minutes"
+- Use real numbers and scenarios specific to {context}
 - Each tweet must be dense — no filler sentences
 - Under 260 chars each
 
 Tweet 6 (engagement): Ask a specific question that gets replies from people who've experienced this.
-Not "thoughts?" — something specific: "What's the exact thought that runs through your head at that moment?"
-Under 200 chars.
+Not "thoughts?" — something specific to this exact situation. Under 200 chars.
 
 RULES: No hashtags. No self-promotion. No "DM me". No "thread below". Each tweet complete on its own.
 
-Also write an image_prompt: a concise description for an AI image generator of a visual that would stop the scroll for this thread. Should be a striking, real-feeling trading scenario — not generic stock photos. Under 60 words.
+Also write an image_prompt: a concise description for an AI image generator of a visual that would stop the scroll for this thread. Should be a striking, real-feeling scenario from the {context} world — not generic stock photos. Under 60 words.
 
 Return ONLY valid JSON, no markdown fences:
 {{"hook": "tweet 1 text", "tweets": ["t1","t2","t3","t4","t5","t6"], "image_prompt": "..."}}"""
 
-    text = _call_claude(prompt, max_tokens=1200, system=_X_SYSTEM)
+    text = _call_claude(prompt, max_tokens=1200, system=x_system)
     if not text:
         return None
 
