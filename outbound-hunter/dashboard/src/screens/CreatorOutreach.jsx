@@ -425,7 +425,7 @@ export default function CreatorOutreach() {
         if (Array.isArray(d) && d.length > 0) { setCreators(d); setLoading(false); return }
       }
     } catch {}
-    setCreators(DEMO)
+    setCreators([])
     setLoading(false)
   }, [])
 

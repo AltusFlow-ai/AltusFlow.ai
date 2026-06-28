@@ -260,7 +260,7 @@ export default function NicheDelivery() {
         if (Array.isArray(d) && d.length > 0) { setStats(d); setLoading(false); return }
       }
     } catch {}
-    setStats(DEMO_STATS)
+    setStats([])
     setLoading(false)
   }, [])
 

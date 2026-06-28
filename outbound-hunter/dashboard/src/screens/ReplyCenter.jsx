@@ -330,12 +330,11 @@ export default function ReplyCenter() {
     try {
       const r = await fetch(url)
       const d = r.ok ? await r.json() : []
-      const list = Array.isArray(d) && d.length > 0 ? d : DEMO_CONVS
+      const list = Array.isArray(d) ? d : []
       setConvs(list)
-      if (!active) selectConv(list[0])
+      if (!active && list.length > 0) selectConv(list[0])
     } catch {
-      setConvs(DEMO_CONVS)
-      selectConv(DEMO_CONVS[0])
+      setConvs([])
     }
   }, [active])
 
@@ -348,7 +347,7 @@ export default function ReplyCenter() {
     setCompose('')
     setSuggestion(null)
     setSent(false)
-    if (DEMO_MESSAGES[conv.id]) setMessages(DEMO_MESSAGES[conv.id])
+    setMessages([])
     fetch(`/api/conversations/${conv.id}/messages`)
       .then(r => r.ok ? r.json() : [])
       .then(msgs => { if (Array.isArray(msgs) && msgs.length > 0) setMessages(msgs) })

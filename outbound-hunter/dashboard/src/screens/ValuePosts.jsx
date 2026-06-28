@@ -952,10 +952,10 @@ function CommentThread({ post, postUrl }) {
         setComments(d.comments)
       } else if (!d.ok && d.error) {
         // Fall back to demo comments so UI is always useful
-        setComments(DEMO_COMMENTS)
+        setComments([])
         if (!d.error.includes('No post URL')) setError(d.error)
       } else {
-        setComments(DEMO_COMMENTS)
+        setComments([])
       }
     } catch {
       setComments(DEMO_COMMENTS)
@@ -1634,7 +1634,7 @@ function CoachContent({ subreddits, onSaved, embedded = false }) {
 
 // ── Topic Intelligence panel ──────────────────────────────────────────────────
 function TopicIntelligence({ onSelectTopic, onBatchDone, embedded = false }) {
-  const [topics,       setTopics]       = useState(DEMO_TOPICS)
+  const [topics,       setTopics]       = useState([])
   const [loading,      setLoading]      = useState(false)
   const [expanded,     setExpanded]     = useState(true)
   const [lastFetch,    setLastFetch]    = useState(null)
@@ -3850,7 +3850,7 @@ export default function ValuePosts() {
         if (Array.isArray(d) && d.length > 0) { setPosts(d); setLoading(false); return }
       }
     } catch {}
-    setPosts(DEMO_POSTS)
+    setPosts([])
     setLoading(false)
   }, [subFilter])
 

@@ -130,8 +130,8 @@ function formatDate(iso) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function LeadSources() {
-  const [sourceStats, setSourceStats] = useState(DEMO_SOURCE_STATS)
-  const [posts,       setPosts]       = useState(DEMO_VALUE_POSTS)
+  const [sourceStats, setSourceStats] = useState([])
+  const [posts,       setPosts]       = useState([])
   const [loading,     setLoading]     = useState(false)
 
   useEffect(() => {
