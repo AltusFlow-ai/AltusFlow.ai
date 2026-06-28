@@ -403,14 +403,15 @@ function AccountTab() {
     </div>
   )
 
-  const NICHES = [
-    { value: 'altusflow',          label: 'AltusFlow Admin — Find Coaches (posts to attract coaches as clients)' },
-    { value: 'trading-coaches',    label: 'Trading Coach — Post as a coach to attract traders' },
-    { value: 'financial-advisors', label: 'Financial Advisor — Post as an advisor to attract clients' },
-    { value: 'fitness-coaches',    label: 'Fitness Coach — Post as a coach to attract gym-goers' },
-    { value: 'recruiters',         label: 'Recruiter — Post as a recruiter to attract job seekers' },
-    { value: 'real-estate',        label: 'Real Estate Investor — Post to attract investors/buyers' },
+  const CLIENT_NICHES = [
+    { value: 'trading-coaches',    label: 'Trading Coach' },
+    { value: 'financial-advisors', label: 'Financial Advisor' },
+    { value: 'fitness-coaches',    label: 'Fitness Coach' },
+    { value: 'recruiters',         label: 'Recruiter' },
+    { value: 'real-estate',        label: 'Real Estate Investor' },
   ]
+
+  const isAdmin = form.niche === 'altusflow'
 
   return (
     <div style={{ maxWidth: 520 }}>
@@ -420,17 +421,46 @@ function AccountTab() {
       {field('calendly_url',  'Calendly URL',     'https://calendly.com/yourname/discovery', 'url')}
       {field('reply_email',   'Reply-from Email', 'hello@altusflow.ai',   'email')}
       <div style={{ marginBottom: 14 }}>
-        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Client Niche</label>
+        <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Content Mode</label>
         <select
           value={form.niche || ''}
           onChange={e => setForm(f => ({ ...f, niche: e.target.value }))}
           style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: 'var(--text-primary)', fontFamily: 'inherit' }}
         >
-          <option value=''>Select a niche…</option>
-          {NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+          <option value=''>Select mode…</option>
+          <option value='altusflow'>AltusFlow Admin — I'm finding coaches as clients</option>
+          <option value='client'>Client Mode — I'm a coach posting to attract my own clients</option>
         </select>
-        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Controls the tone and context of all AI-generated content</div>
+        <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Controls the voice and intent of all AI-generated content</div>
       </div>
+      {isAdmin && (
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Target Niche <span style={{ color: 'var(--teal)' }}>— which type of coach are you targeting?</span></label>
+          <select
+            value={form.target_niche || ''}
+            onChange={e => setForm(f => ({ ...f, target_niche: e.target.value }))}
+            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: 'var(--text-primary)', fontFamily: 'inherit' }}
+          >
+            <option value=''>Select target niche…</option>
+            {CLIENT_NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+          </select>
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Generated posts will speak to pain points specific to this type of coach</div>
+        </div>
+      )}
+      {form.niche === 'client' && (
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Your Niche <span style={{ color: 'var(--teal)' }}>— what type of coach are you?</span></label>
+          <select
+            value={form.target_niche || ''}
+            onChange={e => setForm(f => ({ ...f, target_niche: e.target.value }))}
+            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: 'var(--text-primary)', fontFamily: 'inherit' }}
+          >
+            <option value=''>Select your niche…</option>
+            {CLIENT_NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+          </select>
+        </div>
+      )}
+
       <button onClick={save} disabled={saving} style={{
         background: 'var(--teal)', color: '#fff', border: 'none', borderRadius: 7,
         padding: '8px 20px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',

@@ -133,24 +133,83 @@ _BANNED_SUFFIX_SHORT = "BANNED phrases you never use: " + "; ".join(_BANNED[:12]
 
 def _get_systems(niche: str = None):
     """Return (reddit_system, x_system) for the given niche slug."""
-    persona = _NICHE_PERSONAS.get(niche or _DEFAULT_NICHE) or _NICHE_PERSONAS[_DEFAULT_NICHE]
+    niche = niche or _DEFAULT_NICHE
+    if niche == 'altusflow':
+        target = _get_altusflow_target()
+        return _get_altusflow_systems(target)
+    persona = _NICHE_PERSONAS.get(niche) or _NICHE_PERSONAS[_DEFAULT_NICHE]
     reddit_sys = persona['reddit'] + _BANNED_SUFFIX
     x_sys      = persona['x']      + _BANNED_SUFFIX_SHORT
     return reddit_sys, x_sys
 
 
+_TARGET_NICHE_LABELS = {
+    'trading-coaches':    'trading coaches',
+    'financial-advisors': 'financial advisors',
+    'fitness-coaches':    'fitness coaches',
+    'recruiters':         'recruiters',
+    'real-estate':        'real estate investors',
+}
+
+
 def _get_client_niche() -> str:
-    """Pull the client's configured niche from tenant settings. Falls back to trading-coaches."""
+    """
+    Return the effective niche slug for content generation.
+    When mode=altusflow, returns 'altusflow' with target baked into the prompt via _get_altusflow_systems().
+    When mode=client, returns the target_niche directly (e.g. 'trading-coaches').
+    """
     try:
         from database import get_tenant_setting
         raw = get_tenant_setting('account_settings')
         if raw:
             import json as _j
             d = _j.loads(raw) if isinstance(raw, str) else raw
-            return d.get('niche', _DEFAULT_NICHE) or _DEFAULT_NICHE
+            mode = d.get('niche', '')
+            if mode == 'altusflow':
+                return 'altusflow'
+            if mode == 'client':
+                return d.get('target_niche', _DEFAULT_NICHE) or _DEFAULT_NICHE
+            return mode or _DEFAULT_NICHE
     except Exception:
         pass
     return _DEFAULT_NICHE
+
+
+def _get_altusflow_target() -> str:
+    """Return the human-readable label for the altusflow target niche."""
+    try:
+        from database import get_tenant_setting
+        raw = get_tenant_setting('account_settings')
+        if raw:
+            import json as _j
+            d = _j.loads(raw) if isinstance(raw, str) else raw
+            slug = d.get('target_niche', 'trading-coaches') or 'trading-coaches'
+            return _TARGET_NICHE_LABELS.get(slug, slug.replace('-', ' '))
+    except Exception:
+        pass
+    return 'trading coaches'
+
+
+def _get_altusflow_systems(target_label: str):
+    """Build AltusFlow admin persona prompts dynamically for any target niche."""
+    reddit = (
+        f"You help {target_label} build consistent client acquisition systems. "
+        f"You post in communities where {target_label} hang out because you genuinely want to help them grow — "
+        "not to pitch anything. Your posts are dense with specific, actionable observations about what works for "
+        f"{target_label} trying to get clients: what content converts, what outreach actually gets replies, "
+        f"what mistakes kill most {target_label.split()[0]} businesses. "
+        "You write in plain, direct language. Short paragraphs. Bold for key points. Real numbers and scenarios. "
+        "You never mention your services, DMs, or links. Every sentence earns its place. "
+        + _BANNED_SUFFIX
+    )
+    x = (
+        f"You help {target_label} scale their client acquisition. Your threads earn saves because "
+        "every tweet delivers one concrete insight about growing a coaching or advisory business — "
+        f"what works, what doesn't, what most {target_label.split()[0]}s get wrong about getting clients online. "
+        "Real numbers, specific scenarios, no fluff. No hashtags. No self-promotion. "
+        + _BANNED_SUFFIX_SHORT
+    )
+    return reddit, x
 
 
 _REDDIT_SYSTEM = _get_systems()[0]
@@ -327,9 +386,14 @@ def generate_targeted_post(signal: str, subreddit: str, example_post: str = '', 
     """
     niche = niche or _get_client_niche()
     reddit_system, _ = _get_systems(niche)
-    persona   = _NICHE_PERSONAS.get(niche) or _NICHE_PERSONAS[_DEFAULT_NICHE]
-    audience  = persona['audience']
-    context   = persona['context']
+    if niche == 'altusflow':
+        target    = _get_altusflow_target()
+        audience  = target
+        context   = f'client acquisition and business growth for {target}'
+    else:
+        persona  = _NICHE_PERSONAS.get(niche) or _NICHE_PERSONAS[_DEFAULT_NICHE]
+        audience = persona['audience']
+        context  = persona['context']
 
     example_section = (
         f'\nReal post from this community that triggered this signal:\n"{example_post}"\n'
@@ -399,9 +463,14 @@ def generate_targeted_x_thread(signal: str, niche: str = None, example_post: str
     """
     niche = niche or _get_client_niche()
     _, x_system = _get_systems(niche)
-    persona  = _NICHE_PERSONAS.get(niche) or _NICHE_PERSONAS[_DEFAULT_NICHE]
-    audience = persona['audience']
-    context  = persona['context']
+    if niche == 'altusflow':
+        target   = _get_altusflow_target()
+        audience = target
+        context  = f'client acquisition and business growth for {target}'
+    else:
+        persona  = _NICHE_PERSONAS.get(niche) or _NICHE_PERSONAS[_DEFAULT_NICHE]
+        audience = persona['audience']
+        context  = persona['context']
 
     example_section = (
         f'\nReal community post that surfaced this signal: "{example_post}"\n'
