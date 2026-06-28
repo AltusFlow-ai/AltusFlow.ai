@@ -1406,6 +1406,32 @@ def set_tenant_setting(key: str, value: str):
             )
 
 
+def get_notification_settings(client_id: str = None) -> dict:
+    """Return notification preferences stored in tenant_settings."""
+    import json as _json
+    try:
+        with _reader() as conn:
+            row = conn.execute(
+                text("SELECT value FROM tenant_settings WHERE key='notification_prefs'")
+            ).fetchone()
+        if row and row[0]:
+            return _json.loads(row[0])
+    except Exception:
+        pass
+    return {}
+
+
+def save_notification_settings(client_id: str, prefs: dict) -> bool:
+    """Persist notification preferences to tenant_settings."""
+    import json as _json
+    try:
+        value = _json.dumps(prefs)
+        set_tenant_setting('notification_prefs', value)
+        return True
+    except Exception:
+        return False
+
+
 def get_sent_log_for_compliance(limit: int = 1000):
     """
     Return sent_log rows joined with prospect details for compliance export.
