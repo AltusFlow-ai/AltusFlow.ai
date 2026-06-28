@@ -11,9 +11,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 
 const SUBREDDITS = [
-  'Daytrading', 'Futures', 'FuturesTrading', 'Forex',
+  'swingtrading', 'Daytrading', 'Futures', 'FuturesTrading', 'Forex',
   'stocks', 'options', 'algotrading', 'StockMarket',
-  'pennystocks', 'wallstreetbets',
+  'pennystocks', 'wallstreetbets', 'Entrepreneur', 'smallbusiness',
 ]
 
 const STATUS_COLORS = {

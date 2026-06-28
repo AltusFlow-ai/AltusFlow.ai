@@ -404,11 +404,12 @@ function AccountTab() {
   )
 
   const NICHES = [
-    { value: 'trading-coaches',    label: 'Trading Coach' },
-    { value: 'financial-advisors', label: 'Financial Advisor' },
-    { value: 'fitness-coaches',    label: 'Fitness Coach' },
-    { value: 'recruiters',         label: 'Recruiter' },
-    { value: 'real-estate',        label: 'Real Estate Investor' },
+    { value: 'altusflow',          label: 'AltusFlow Admin — Find Coaches (posts to attract coaches as clients)' },
+    { value: 'trading-coaches',    label: 'Trading Coach — Post as a coach to attract traders' },
+    { value: 'financial-advisors', label: 'Financial Advisor — Post as an advisor to attract clients' },
+    { value: 'fitness-coaches',    label: 'Fitness Coach — Post as a coach to attract gym-goers' },
+    { value: 'recruiters',         label: 'Recruiter — Post as a recruiter to attract job seekers' },
+    { value: 'real-estate',        label: 'Real Estate Investor — Post to attract investors/buyers' },
   ]
 
   return (
