@@ -958,7 +958,7 @@ function CommentThread({ post, postUrl }) {
         setComments([])
       }
     } catch {
-      setComments(DEMO_COMMENTS)
+      setComments([])
     }
     setLoading(false)
   }
