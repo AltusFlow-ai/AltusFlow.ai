@@ -428,14 +428,18 @@ function AccountTab() {
           style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: 'var(--text-primary)', fontFamily: 'inherit' }}
         >
           <option value=''>Select mode…</option>
-          <option value='altusflow'>AltusFlow Admin — I'm finding coaches as clients</option>
-          <option value='client'>Client Mode — I'm a coach posting to attract my own clients</option>
+          <option value='altusflow'>AltusFlow Admin — Posting to attract coaches as MY clients</option>
+          <optgroup label="── Post on behalf of a client ──">
+            {CLIENT_NICHES.map(n => (
+              <option key={n.value} value={n.value}>{n.label} — Posting to attract their clients</option>
+            ))}
+          </optgroup>
         </select>
         <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Controls the voice and intent of all AI-generated content</div>
       </div>
       {isAdmin && (
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Target Niche <span style={{ color: 'var(--teal)' }}>— which type of coach are you targeting?</span></label>
+          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Which niche are you targeting? <span style={{ color: 'var(--teal)' }}>— pick the coach type you want to attract</span></label>
           <select
             value={form.target_niche || ''}
             onChange={e => setForm(f => ({ ...f, target_niche: e.target.value }))}
@@ -444,20 +448,7 @@ function AccountTab() {
             <option value=''>Select target niche…</option>
             {CLIENT_NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
           </select>
-          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Generated posts will speak to pain points specific to this type of coach</div>
-        </div>
-      )}
-      {form.niche === 'client' && (
-        <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: 4 }}>Your Niche <span style={{ color: 'var(--teal)' }}>— what type of coach are you?</span></label>
-          <select
-            value={form.target_niche || ''}
-            onChange={e => setForm(f => ({ ...f, target_niche: e.target.value }))}
-            style={{ width: '100%', boxSizing: 'border-box', background: 'var(--surface-2)', border: '1px solid var(--border)', borderRadius: 7, padding: '7px 10px', fontSize: 12, color: 'var(--text-primary)', fontFamily: 'inherit' }}
-          >
-            <option value=''>Select your niche…</option>
-            {CLIENT_NICHES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
-          </select>
+          <div style={{ fontSize: 10, color: 'var(--text-tertiary)', marginTop: 4 }}>Posts will address pain points specific to this coach type</div>
         </div>
       )}
 

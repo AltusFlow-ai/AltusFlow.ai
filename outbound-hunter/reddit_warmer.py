@@ -269,7 +269,6 @@ def run_daily_warmup() -> bool:
                 continue
 
             _save_warmup_comment(pid, subreddit, comment, post['url'], 'pending')
-            _notify_telegram_warmup(pid, subreddit, post['title'], post['url'], comment)
             log.info('reddit_warmer: queued comment on %s in r/%s', pid, subreddit)
             return True
 

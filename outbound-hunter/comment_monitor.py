@@ -240,10 +240,7 @@ def run_comment_monitor(client_id: str = None) -> int:
                 new_leads += 1
                 log.info("comment_monitor: new lead #%d from u/%s on post %d",
                          lead_id, username, post_id)
-                # Send to Telegram for reply approval
-                _notify_telegram(lead_id, post_title, subreddit, post_url,
-                                  username, body, result.get("reply", ""),
-                                  result["score"])
+                # Telegram disabled — review reply leads in the Reply Center
 
     return new_leads
 

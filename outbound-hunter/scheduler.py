@@ -415,21 +415,8 @@ def _run_reddit_warmup():
 
 
 def _tg_notify(message: str):
-    """Send a plain text message to the Telegram approval chat."""
-    import os, json, urllib.request
-    token   = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-    chat_id = os.environ.get('TELEGRAM_CHAT_ID', '')
-    if not token or not chat_id:
-        return
-    try:
-        body = json.dumps({"chat_id": chat_id, "text": message, "parse_mode": "Markdown"}).encode()
-        req  = urllib.request.Request(
-            f"https://api.telegram.org/bot{token}/sendMessage",
-            data=body, headers={"Content-Type": "application/json"}, method="POST",
-        )
-        urllib.request.urlopen(req, timeout=8)
-    except Exception:
-        pass
+    # Telegram notifications disabled — use the dashboard instead
+    pass
 
 
 def _alert_error(job_name: str, error: Exception):
