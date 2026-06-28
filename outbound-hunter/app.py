@@ -180,13 +180,7 @@ def _set_tenant_context():
 if os.environ.get("SCHEDULER_ENABLED", "true").lower() != "false":
     scheduler.start()
 
-# Start Telegram approval bot (no-op if TELEGRAM_BOT_TOKEN not set)
-try:
-    import telegram_approver as _tg
-    _tg.init()
-except Exception as _tg_err:
-    import logging as _lg
-    _lg.getLogger(__name__).warning("Telegram approver init failed: %s", _tg_err)
+# Telegram approval bot disabled — review posts in the Queue tab instead
 
 # ── Real-time Reddit stream ────────────────────────────────────────────────────
 # Daemon thread — monitors subreddits 24/7 via PRAW stream.

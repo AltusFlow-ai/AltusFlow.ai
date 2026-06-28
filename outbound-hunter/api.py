@@ -3609,12 +3609,6 @@ def generate_from_idea():
                 client_id     = _uid(),
                 source_signal = idea,
             )
-            if pid:
-                try:
-                    import telegram_approver as _tg
-                    _tg.send_for_review(pid, {**result, 'platform': 'reddit', 'signal': idea, 'source_signal': idea})
-                except Exception:
-                    pass
             return jsonify({'ok': True, 'created': {
                 'id':        pid,
                 'platform':  'reddit',
@@ -3645,12 +3639,6 @@ def generate_from_idea():
                 client_id     = _uid(),
                 source_signal = idea,
             )
-            if pid:
-                try:
-                    import telegram_approver as _tg
-                    _tg.send_for_review(pid, {**result, 'platform': 'x', 'signal': idea, 'source_signal': idea})
-                except Exception:
-                    pass
             return jsonify({'ok': True, 'created': {
                 'id':          pid,
                 'platform':    'x',

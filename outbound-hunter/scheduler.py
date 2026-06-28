@@ -266,7 +266,6 @@ def _run_nightly_content():
         return None
 
     import random
-    import telegram_approver
     count = 0
 
     # 2 Reddit posts
@@ -295,14 +294,6 @@ def _run_nightly_content():
                     image_prompt   = result.get('image_prompt'),
                 )
                 count += 1
-                # Notify Telegram for approval
-                if pid:
-                    telegram_approver.send_for_review(pid, {
-                        **result,
-                        'platform':      'reddit',
-                        'signal':        sig['signal'],
-                        'source_signal': sig['signal'],
-                    })
         except Exception as e:
             logger.error("[content] nightly reddit post %d failed: %s", i + 1, e)
 
@@ -335,13 +326,6 @@ def _run_nightly_content():
                     image_prompt   = result.get('image_prompt'),
                 )
                 count += 1
-                if pid:
-                    telegram_approver.send_for_review(pid, {
-                        **result,
-                        'platform':      'x',
-                        'signal':        sig['signal'],
-                        'source_signal': sig['signal'],
-                    })
         except Exception as e:
             _alert_error(f"nightly_x_thread_{i+1}", e)
 
