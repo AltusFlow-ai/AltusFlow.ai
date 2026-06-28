@@ -1,32 +1,37 @@
 """
 scrapers/twitter.py
-Searches X/Twitter for prospects posting signal phrases.
+Searches X/Twitter for prospects posting signal phrases via ScrapeBadger API.
 
-Signal phrases are organized by niche — each prospect is tagged with the
-niche of the phrase that matched it. The niche flows through to the DB
-and is used to filter the batch-confirm and digest views.
+Replaces the official X API bearer token (paid, $100+/month) with ScrapeBadger
+which covers Twitter at a fraction of the cost using the same SCRAPEBADGER_API_KEY
+already used for Reddit.
 
-Error handling:
-  - 401 / 403  → CRITICAL  (token invalid or permission revoked)
-  - 429        → WARNING   (rate limit, self-healing on next run)
-  - 5xx        → CRITICAL  (API outage)
-  - Network    → CRITICAL
-  - No token   → CRITICAL  (misconfiguration)
+Setup: SCRAPEBADGER_API_KEY in Railway env vars (same key as Reddit — no extra signup).
 """
 
 import os
-import json
-import urllib.request
-import urllib.parse
-import urllib.error
-from datetime import datetime, timedelta
+import time
 
-BEARER_TOKEN = os.environ.get("TWITTER_BEARER_TOKEN", "")
+import requests
 
-# ── Signal phrase library ─────────────────────────────────────────────────────
-# Organized by niche. Each prospect is tagged with the niche of its matching phrase.
-# Add new niches here as AltusFlow expands to new verticals.
+SCRAPEBADGER_API_KEY  = os.environ.get("SCRAPEBADGER_API_KEY", "")
+SCRAPEBADGER_TWITTER  = "https://scrapebadger.com/v1/twitter/tweets/advanced_search"
 
+_RATE_FLOOR = 1.5  # seconds between requests
+
+# ── Error logger ───────────────────────────────────────────────────────────────
+try:
+    from error_logger import log_pipeline_error, WARNING, CRITICAL
+    _log_error = log_pipeline_error
+    _WARN = WARNING
+    _CRIT = CRITICAL
+except Exception:
+    def _log_error(run_id, source, msg, sev=None, **kw):
+        print(f"[{source}] {msg}")
+    _WARN = "warning"
+    _CRIT = "critical"
+
+# ── Signal phrase library (unchanged) ─────────────────────────────────────────
 SIGNAL_PHRASES_BY_NICHE = {
     "financial-advisors": [
         '"pipeline dried up" financial advisor',
@@ -169,198 +174,111 @@ SIGNAL_PHRASES_BY_NICHE = {
     ],
 }
 
-# Suggested fixes by HTTP status code
-_STATUS_FIX = {
-    401: (
-        "TWITTER_BEARER_TOKEN is invalid or expired. "
-        "Regenerate at developer.twitter.com > Your App > Keys and Tokens."
-    ),
-    403: (
-        "This app does not have permission to use Twitter API v2 search. "
-        "Verify app permissions and your plan tier at developer.twitter.com."
-    ),
-    429: (
-        "Twitter rate limit hit. The scraper will automatically recover on the next run. "
-        "No action needed unless this recurs daily — if so, reduce max_per_phrase."
-    ),
-    503: (
-        "Twitter API is experiencing an outage. "
-        "Check https://api.twitterstat.us — resolves automatically."
-    ),
-}
 
+# ── HTTP helper ────────────────────────────────────────────────────────────────
 
-def _bearer_header():
-    return {"Authorization": f"Bearer {BEARER_TOKEN}"}
-
-
-def _parse_bio(description):
-    """Extract (title, company) from a Twitter bio string."""
-    bio = description.lower()
-    if "|" in description:
-        parts = description.split("|")
-        return parts[0].strip(), (parts[1].strip() if len(parts) > 1 else "")
-    if " at " in bio:
-        idx = bio.index(" at ")
-        return description[:idx].strip(), description[idx + 4:idx + 44].strip()
-    if " @ " in description:
-        idx = description.index(" @ ")
-        return description[:idx].strip(), description[idx + 3:idx + 43].strip()
-    return "", ""
-
-
-def search_recent(query, niche, max_results=20, run_id=None):
+def _sb_search(query: str, count: int = 50, run_id=None) -> list:
     """
-    Search recent tweets for one signal phrase.
-    Returns a list of prospect dicts tagged with niche, or [] on any failure.
-    Failures are logged via error_logger — this function never raises.
+    Search X/Twitter via ScrapeBadger advanced tweet search.
+    Returns list of raw tweet dicts.
     """
-    from error_logger import log_pipeline_error, WARNING, CRITICAL
-
-    if not BEARER_TOKEN:
-        log_pipeline_error(
+    if not SCRAPEBADGER_API_KEY:
+        _log_error(
             run_id, "twitter_scraper",
-            "TWITTER_BEARER_TOKEN is not set — Twitter search skipped entirely.",
-            CRITICAL,
-            suggested_fix=(
-                "Add TWITTER_BEARER_TOKEN to your .env file. "
-                "Get a Bearer Token at developer.twitter.com > Your App > Keys and Tokens."
-            ),
+            "SCRAPEBADGER_API_KEY not set — Twitter search skipped. "
+            "Add it to Railway env vars.",
+            _CRIT,
         )
         return []
 
-    full_query = f"{query} -is:retweet -is:reply lang:en"
-    params = urllib.parse.urlencode({
-        "query":        full_query,
-        "max_results":  min(max_results, 100),
-        "tweet.fields": "created_at,author_id,public_metrics,entities",
-        "user.fields":  "name,username,description,public_metrics,location",
-        "expansions":   "author_id",
-        "start_time":   (datetime.utcnow() - timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    })
-    url = f"https://api.twitter.com/2/tweets/search/recent?{params}"
+    headers = {"x-api-key": SCRAPEBADGER_API_KEY}
+    params  = {
+        "query":      f"{query} lang:en",
+        "query_type": "Latest",
+        "count":      min(count, 100),
+    }
 
-    try:
-        req = urllib.request.Request(url, headers=_bearer_header())
-        with urllib.request.urlopen(req, timeout=15) as r:
-            data = json.loads(r.read())
+    for attempt in range(3):
+        try:
+            r = requests.get(SCRAPEBADGER_TWITTER, headers=headers, params=params, timeout=20)
+            time.sleep(_RATE_FLOOR)
 
-    except urllib.error.HTTPError as e:
-        body     = e.read().decode(errors="replace")[:300]
-        severity = CRITICAL if e.code in (401, 403) else WARNING
-        fix      = _STATUS_FIX.get(
-            e.code,
-            f"Twitter API returned HTTP {e.code}. Check developer.twitter.com for details."
-        )
-        log_pipeline_error(
-            run_id, "twitter_scraper",
-            f"HTTP {e.code} on query '{query[:60]}': {body}",
-            severity, suggested_fix=fix,
-        )
-        return []
+            if r.status_code == 200:
+                return r.json().get("data", [])
 
-    except urllib.error.URLError as e:
-        log_pipeline_error(
-            run_id, "twitter_scraper",
-            f"Network error on query '{query[:60]}': {e.reason}",
-            CRITICAL,
-            suggested_fix="Check internet connectivity and DNS resolution from the server.",
-        )
-        return []
+            if r.status_code == 429:
+                wait = int(r.headers.get("Retry-After", 65))
+                _log_error(run_id, "twitter_scraper",
+                           f"429 rate limit — waiting {wait}s (attempt {attempt + 1}/3)", _WARN)
+                time.sleep(wait)
+                continue
 
-    except Exception as e:
-        log_pipeline_error(
-            run_id, "twitter_scraper",
-            f"Unexpected error on query '{query[:60]}': {type(e).__name__}: {e}",
-            CRITICAL,
-        )
-        return []
+            if r.status_code == 401:
+                _log_error(run_id, "twitter_scraper",
+                           "ScrapeBadger API key invalid (401). Check SCRAPEBADGER_API_KEY in Railway.", _CRIT)
+                return []
 
-    tweets = data.get("data", [])
-    users  = {u["id"]: u for u in data.get("includes", {}).get("users", [])}
+            if r.status_code == 402:
+                _log_error(run_id, "twitter_scraper",
+                           "ScrapeBadger credits exhausted (402). Top up at scrapebadger.com.", _CRIT)
+                return []
 
+            _log_error(run_id, "twitter_scraper",
+                       f"HTTP {r.status_code} on query '{query[:60]}'", _WARN)
+            return []
+
+        except requests.RequestException as e:
+            _log_error(run_id, "twitter_scraper", f"Network error: {e}", _CRIT)
+            time.sleep(5)
+
+    return []
+
+
+def _tweet_to_prospect(tweet: dict, niche: str, signal_phrase: str) -> dict:
+    """Convert a ScrapeBadger tweet dict to a standard prospect dict."""
+    username    = tweet.get("username") or ""
+    handle      = f"@{username}" if username and not username.startswith("@") else username
+    display_name = tweet.get("user_name") or username
+    text        = tweet.get("full_text") or tweet.get("text") or ""
+    tweet_id    = tweet.get("id") or ""
+
+    return {
+        "platform":        "twitter",
+        "niche":           niche,
+        "niche_segment":   niche,
+        "handle":          handle,
+        "name":            display_name,
+        "title":           "",
+        "company":         "",
+        "profile_url":     f"https://x.com/{username}",
+        "post_text":       text,
+        "post_url":        f"https://x.com/{username}/status/{tweet_id}",
+        "post_date":       tweet.get("created_at", ""),
+        "signal_phrase":   signal_phrase,
+        "upvote_score":    tweet.get("favorite_count", 0) or 0,
+        "outreach_method": "twitter_dm",
+    }
+
+
+# ── Public entry points ────────────────────────────────────────────────────────
+
+def search_recent(query: str, niche: str, max_results: int = 20, run_id=None) -> list:
+    """Search X for one signal phrase. Same signature as original."""
+    tweets  = _sb_search(query, count=max_results, run_id=run_id)
     results = []
     for tweet in tweets:
-        user        = users.get(tweet.get("author_id"), {})
-        description = user.get("description", "")
-        handle      = user.get("username", "")
-        title, company = _parse_bio(description)
-
-        results.append({
-            "platform":     "twitter",
-            "niche":        niche,
-            "handle":       f"@{handle}",
-            "name":         user.get("name", ""),
-            "title":        title,
-            "company":      company,
-            "profile_url":  f"https://twitter.com/{handle}",
-            "post_text":    tweet.get("text", ""),
-            "post_url":     f"https://twitter.com/{handle}/status/{tweet['id']}",
-            "post_date":    tweet.get("created_at", ""),
-            "signal_phrase": query,
-        })
-
+        username = tweet.get("username") or ""
+        if not username or username in ("deleted", ""):
+            continue
+        results.append(_tweet_to_prospect(tweet, niche, query))
     return results
 
 
-def run_all_searches(max_per_phrase=10, run_id=None):
-    """
-    Run every signal phrase across all niches.
-    Returns combined unique results, each tagged with niche.
-    If total results are zero after all searches, fires a critical alert.
-    """
-    from error_logger import log_pipeline_error, log_zero_results_alert, CRITICAL
-
-    # Early exit with one notification — avoids per-phrase duplicate alerts
-    if not BEARER_TOKEN:
-        log_pipeline_error(
-            run_id, "twitter_scraper",
-            "TWITTER_BEARER_TOKEN not set — Twitter search skipped entirely.",
-            CRITICAL,
-            suggested_fix=(
-                "Add TWITTER_BEARER_TOKEN to your .env file. "
-                "Get a Bearer Token at developer.twitter.com > Your App > Keys and Tokens."
-            ),
-        )
-        return []
-
-    all_results    = []
-    seen_handles   = set()
-    phrase_count   = sum(len(v) for v in SIGNAL_PHRASES_BY_NICHE.values())
-    phrases_failed = 0
-
-    for niche, phrases in SIGNAL_PHRASES_BY_NICHE.items():
-        for phrase in phrases:
-            print(f"[Twitter] [{niche}] Searching: {phrase}")
-            results = search_recent(phrase, niche=niche, max_results=max_per_phrase, run_id=run_id)
-
-            if not results and BEARER_TOKEN:
-                phrases_failed += 1
-
-            for r in results:
-                if r["handle"] not in seen_handles:
-                    seen_handles.add(r["handle"])
-                    all_results.append(r)
-
-    print(
-        f"[Twitter] Total unique prospects: {len(all_results)} "
-        f"({phrases_failed}/{phrase_count} phrase searches returned 0 results)"
-    )
-
-    if not all_results and BEARER_TOKEN:
-        log_zero_results_alert(run_id, "Twitter")
-
-    return all_results
-
-
-def run_niche_search(niche_slug: str, run_id=None, max_per_phrase: int = 10) -> list[dict]:
-    """
-    Search X for a single niche — mirrors reddit.py's run_niche_search() signature
-    so main.py can call it the same way.
-    """
+def run_niche_search(niche_slug: str, run_id=None, max_per_phrase: int = 20) -> list:
+    """Search X for a single niche. Same signature as original."""
     phrases = SIGNAL_PHRASES_BY_NICHE.get(niche_slug, [])
     if not phrases:
-        print(f"[Twitter] [{niche_slug}] No X signal phrases configured — skipping.")
+        print(f"[Twitter] [{niche_slug}] No signal phrases configured — skipping.")
         return []
 
     all_results  = []
@@ -376,6 +294,41 @@ def run_niche_search(niche_slug: str, run_id=None, max_per_phrase: int = 10) -> 
                 all_results.append(r)
 
     print(f"[Twitter] [{niche_slug}] {len(all_results)} unique prospects found")
+    return all_results
+
+
+def run_all_searches(max_per_phrase: int = 20, run_id=None) -> list:
+    """Run every signal phrase across all niches. Same signature as original."""
+    if not SCRAPEBADGER_API_KEY:
+        _log_error(
+            run_id, "twitter_scraper",
+            "SCRAPEBADGER_API_KEY not set — Twitter search skipped entirely. "
+            "Add it to Railway env vars.",
+            _CRIT,
+        )
+        return []
+
+    all_results  = []
+    seen_handles = set()
+
+    for niche, phrases in SIGNAL_PHRASES_BY_NICHE.items():
+        for phrase in phrases:
+            print(f"[Twitter] [{niche}] Searching: {phrase}")
+            results = search_recent(phrase, niche=niche, max_results=max_per_phrase, run_id=run_id)
+            for r in results:
+                if r["handle"] not in seen_handles:
+                    seen_handles.add(r["handle"])
+                    all_results.append(r)
+
+    print(f"[Twitter] Total unique prospects: {len(all_results)}")
+
+    try:
+        from error_logger import log_zero_results_alert
+        if not all_results and SCRAPEBADGER_API_KEY:
+            log_zero_results_alert(run_id, "Twitter")
+    except Exception:
+        pass
+
     return all_results
 
 
