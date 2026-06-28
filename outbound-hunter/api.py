@@ -3095,23 +3095,21 @@ def signals_live():
                 ORDER BY last_seen DESC
                 LIMIT 40
             """)).fetchall()
-        if rows:
-            results = [
-                {
-                    'signal':     r[0],
-                    'platform':   r[1] or 'reddit',
-                    'count':      r[2],
-                    'last_seen':  r[3],
-                    'subreddits': r[4] or '',
-                    'pods':       r[5] or '',
-                    'example':    r[6] or '',
-                }
-                for r in rows
-            ]
-            return jsonify(results)
-        return jsonify(SIGNAL_DEMO)
+        results = [
+            {
+                'signal':     r[0],
+                'platform':   r[1] or 'reddit',
+                'count':      r[2],
+                'last_seen':  r[3],
+                'subreddits': r[4] or '',
+                'pods':       r[5] or '',
+                'example':    r[6] or '',
+            }
+            for r in rows
+        ]
+        return jsonify(results)
     except Exception:
-        return jsonify(SIGNAL_DEMO)
+        return jsonify([])
 
 
 # ── Value Posts Performance ────────────────────────────────────────────────────
