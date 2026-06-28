@@ -423,9 +423,10 @@ function AccountTab() {
 // ── Notifications tab ─────────────────────────────────────────────────────────
 
 function NotificationsTab() {
-  const [form,   setForm]   = useState({})
-  const [saving, setSaving] = useState(false)
-  const [saved,  setSaved]  = useState(false)
+  const [form,    setForm]    = useState({})
+  const [saving,  setSaving]  = useState(false)
+  const [saved,   setSaved]   = useState(false)
+  const [saveErr, setSaveErr] = useState('')
 
   useEffect(() => {
     fetch('/api/settings/notifications').then(r => r.ok ? r.json() : {}).then(d => setForm(d || {})).catch(() => {})
@@ -433,12 +434,19 @@ function NotificationsTab() {
 
   function save() {
     setSaving(true)
+    setSaveErr('')
     fetch('/api/settings/notifications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
-    }).then(() => { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 2000) })
-      .catch(() => setSaving(false))
+    })
+      .then(r => r.json())
+      .then(d => {
+        setSaving(false)
+        if (d && d.ok) { setSaved(true); setTimeout(() => setSaved(false), 2000) }
+        else setSaveErr(d?.error || 'Save failed — check Railway logs')
+      })
+      .catch(e => { setSaving(false); setSaveErr(String(e)) })
   }
 
   const tog = (key, label, desc) => (
@@ -459,13 +467,15 @@ function NotificationsTab() {
       {tog('booked_alert',   'Call booked alerts',      'Instant alert when a prospect books a discovery call')}
       {tog('scan_complete',  'Scan complete summary',   'Summary email after each scan run')}
       {tog('weekly_report',  'Weekly performance report', 'Every Monday — open rates, replies, bookings')}
-      <button onClick={save} disabled={saving} style={{
-        background: 'var(--teal)', color: '#fff', border: 'none', borderRadius: 7,
-        padding: '8px 20px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
-        marginTop: 4,
-      }}>
-        {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 4 }}>
+        <button onClick={save} disabled={saving} style={{
+          background: 'var(--teal)', color: '#fff', border: 'none', borderRadius: 7,
+          padding: '8px 20px', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit',
+        }}>
+          {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+        </button>
+        {saveErr && <span style={{ fontSize: 11, color: 'var(--coral)' }}>{saveErr}</span>}
+      </div>
     </div>
   )
 }
