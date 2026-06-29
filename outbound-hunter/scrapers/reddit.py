@@ -177,7 +177,11 @@ def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
             time.sleep(_RATE_FLOOR)
 
             if r.status_code == 200:
-                return r.json()
+                data = r.json()
+                import logging as _l2
+                _l2.getLogger(__name__).info("[reddit] ScrapeBadger %s → 200, posts=%d",
+                    context, len(data.get('posts', [])))
+                return data
 
             if r.status_code == 429:
                 wait = int(r.headers.get("Retry-After", 65))
@@ -192,15 +196,15 @@ def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
             if r.status_code == 401:
                 _log_error(
                     run_id, "reddit_scraper",
-                    "ScrapeBadger API key invalid or expired (401). "
-                    "Check SCRAPEBADGER_API_KEY in Railway.",
+                    f"ScrapeBadger 401 on {context} — API key invalid or expired. "
+                    "Check SCRAPEBADGER_API_KEY in Railway. Body: " + r.text[:200],
                     _CRIT,
                 )
                 return None
 
             _log_error(
                 run_id, "reddit_scraper",
-                f"HTTP {r.status_code} on {context} — skipping",
+                f"ScrapeBadger HTTP {r.status_code} on {context} — body: {r.text[:200]}",
                 _WARN,
             )
             return None
@@ -359,9 +363,15 @@ def scan_subreddit(session, subreddit_name: str, signal_phrases: list,
 
 def run_niche_search(niche_slug: str, run_id=None) -> list:
     """Scan all subreddits for a single niche."""
+    import logging as _logging
+    _lg = _logging.getLogger(__name__)
+
     from scrapers.niches import get_reddit_subreddits, get_signal_phrases
 
-    if not _get_api_key():
+    key = _get_api_key()
+    _lg.info("[reddit] run_niche_search niche=%r key_found=%s", niche_slug, bool(key))
+
+    if not key:
         _log_error(
             run_id, "reddit_scraper",
             "SCRAPEBADGER_API_KEY not configured — Reddit scan skipped. "
@@ -373,24 +383,27 @@ def run_niche_search(niche_slug: str, run_id=None) -> list:
     subreddits     = get_reddit_subreddits(niche_slug)
     signal_phrases = get_signal_phrases(niche_slug)
 
+    _lg.info("[reddit] niche=%r subreddits=%r phrases=%r", niche_slug, subreddits, signal_phrases[:3])
+
     if not subreddits:
-        print(f"[Reddit] [{niche_slug}] No subreddits configured — skipping.")
+        _lg.warning("[reddit] niche=%r has no subreddits configured", niche_slug)
         return []
 
-    print(f"\n[Reddit] [{niche_slug}] Scanning {len(subreddits)} subreddits via ScrapeBadger...")
+    _lg.info("[reddit] scanning %d subreddits for %s via ScrapeBadger...", len(subreddits), niche_slug)
     session     = _session()
     all_results = []
     seen_keys   = set()
 
     for subreddit in subreddits:
         posts = scan_subreddit(session, subreddit, signal_phrases, niche_slug, run_id=run_id)
+        _lg.info("[reddit] r/%s → %d signal posts", subreddit, len(posts))
         for p in posts:
             key = (p["handle"], p["post_url"])
             if key not in seen_keys:
                 seen_keys.add(key)
                 all_results.append(p)
 
-    print(f"[Reddit] [{niche_slug}] Total unique: {len(all_results)}")
+    _lg.info("[reddit] niche=%r total unique=%d", niche_slug, len(all_results))
     return all_results
 
 

@@ -75,6 +75,7 @@ def _run_pipeline(forced_tenant_slug=None):
             return
 
         # ── Tenant resolution ─────────────────────────────────────────────────
+        logger.info("=== SCAN START === forced_tenant_slug=%r", forced_tenant_slug)
         if forced_tenant_slug:
             # Called from a logged-in HTTP request — use the known tenant directly.
             tenants = [{"slug": forced_tenant_slug}]
@@ -128,13 +129,16 @@ def _run_tenant_pipeline(tenant_slug):
     Sets the tenant slug on the current thread before calling main.main()
     so database.py routes all queries to the correct tenant DB.
     """
+    logger.info("=== _run_tenant_pipeline slug=%r ===", tenant_slug)
     try:
-        from database import set_tenant_slug, init_db
+        from database import set_tenant_slug, init_db, _current_tenant_slug
         if tenant_slug:
             set_tenant_slug(tenant_slug)
             init_db()  # ensure schema exists (idempotent)
+        logger.info("Active tenant slug in thread: %r", _current_tenant_slug())
         import main as _main
         _main.main()
+        logger.info("=== _run_tenant_pipeline DONE slug=%r ===", tenant_slug)
     except Exception as e:
         try:
             log_pipeline_error(
