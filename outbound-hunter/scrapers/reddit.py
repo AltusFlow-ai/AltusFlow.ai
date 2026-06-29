@@ -142,19 +142,28 @@ def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
     import logging as _l2
     _lg = _l2.getLogger(__name__)
     url = SCRAPEBADGER_BASE + endpoint
+    _lg.info("[SB] GET %s params=%s", url, params)
 
     for attempt in range(3):
         try:
             r = session.get(url, params=params, timeout=20)
             time.sleep(_RATE_FLOOR)
+            _lg.info("[SB] %s → HTTP %d | body[:300]: %s", context, r.status_code, r.text[:300])
 
             if r.status_code == 200:
                 data = r.json()
-                posts = data.get("posts") or data.get("data") or []
+                # Try every known SB response shape
+                posts = (
+                    data.get("posts")
+                    or data.get("items")
+                    or data.get("results")
+                    or data.get("data")
+                    or []
+                )
                 if isinstance(posts, dict):
                     posts = posts.get("children", [])
                     posts = [p.get("data", p) for p in posts]
-                _lg.info("[reddit][SB] %s → 200, posts=%d", context, len(posts))
+                _lg.info("[SB] %s → 200, posts=%d, keys=%s", context, len(posts), list(data.keys()))
                 return posts
 
             if r.status_code == 429:
@@ -164,16 +173,17 @@ def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
                 time.sleep(wait)
                 continue
 
-            if r.status_code == 401:
+            if r.status_code in (401, 403):
                 _log_error(run_id, "reddit_scraper",
-                    f"ScrapeBadger 401 on {context} — check SCRAPEBADGER_API_KEY in Railway. Body: {r.text[:200]}", _CRIT)
+                    f"ScrapeBadger {r.status_code} on {context} — auth failed. Body: {r.text[:300]}", _CRIT)
                 return []
 
             _log_error(run_id, "reddit_scraper",
-                f"ScrapeBadger HTTP {r.status_code} on {context} — body: {r.text[:200]}", _WARN)
+                f"ScrapeBadger HTTP {r.status_code} on {context} — body: {r.text[:300]}", _WARN)
             return []
 
         except requests.RequestException as e:
+            _lg.error("[SB] request error on %s: %s", context, e)
             _log_error(run_id, "reddit_scraper", f"ScrapeBadger request error on {context}: {e}", _WARN)
             time.sleep(5)
 
