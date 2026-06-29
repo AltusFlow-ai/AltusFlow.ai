@@ -231,29 +231,48 @@ def _fire_slack(config, payload):
     _post_json(url, {"text": text})
 
 
-# Stubs for native connectors — wired when the integration is built out
+# Native connectors — raise NotImplementedError so misconfigured integrations
+# produce a visible error in the log instead of silently disappearing.
 def _fire_hubspot(config, payload):
-    pass  # TODO: upsert contact + optional sequence enroll
+    raise NotImplementedError(
+        "HubSpot native integration not yet implemented — "
+        "use the EventDispatcher hubspot_push route instead"
+    )
 
 
 def _fire_apollo(config, payload):
-    pass  # TODO: add contact to sequence
+    raise NotImplementedError(
+        "Apollo.io integration not yet implemented — "
+        "remove from active integrations or implement _fire_apollo()"
+    )
 
 
 def _fire_instantly(config, payload):
-    pass  # TODO: add lead to campaign
+    raise NotImplementedError(
+        "Instantly integration not yet implemented — "
+        "remove from active integrations or implement _fire_instantly()"
+    )
 
 
 def _fire_lemlist(config, payload):
-    pass  # TODO: add lead to campaign
+    raise NotImplementedError(
+        "Lemlist integration not yet implemented — "
+        "remove from active integrations or implement _fire_lemlist()"
+    )
 
 
 def _fire_gohighlevel(config, payload):
-    pass  # TODO: upsert contact + opportunity
+    raise NotImplementedError(
+        "GoHighLevel integration not yet implemented — "
+        "remove from active integrations or implement _fire_gohighlevel()"
+    )
 
 
 def _fire_gmail(config, payload):
-    pass  # TODO: queue SMTP send via sequence engine
+    raise NotImplementedError(
+        "Gmail/SMTP integration not yet implemented — "
+        "remove from active integrations or implement _fire_gmail()"
+    )
 
 
 def _fire_calendly(config, payload):

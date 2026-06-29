@@ -158,7 +158,8 @@ class EventDispatcher:
         explicitly opted out and will never receive outreach.
 
         Returns True if handle is empty (pre-insert stage, nothing to check).
-        Fails open: if consent DB is unavailable, defaults to granted.
+        Fails closed: if consent DB is unavailable, blocks the event rather than
+        allowing unconsented outreach.
         """
         if not prospect_handle:
             return True
@@ -166,8 +167,9 @@ class EventDispatcher:
             from database import is_on_dnc
             revoked = is_on_dnc(prospect_handle, "_consent_revoked", user_id=user_id)
             return not revoked
-        except Exception:
-            return True
+        except Exception as e:
+            self._log(f"WARNING: consent DB unavailable for '{prospect_handle}' — blocking event ({e})")
+            return False
 
     def generate_event_id(self, user_id, prospect_id, event_type: str) -> str:
         """

@@ -139,6 +139,53 @@ def _load_keys_from_db():
 
 
 _load_keys_from_db()
+
+
+def _validate_env():
+    """Log warnings for missing required environment variables."""
+    import logging as _logging
+    _vlog = _logging.getLogger("altusflow.startup")
+    required = {
+        "ANTHROPIC_API_KEY":   "Claude drafting will fail — no outreach messages will be generated",
+        "HUBSPOT_TOKEN":       "HubSpot push will fail — approved prospects won't reach CRM",
+        "HUBSPOT_PIPELINE_ID": "Deal creation will fail — HUBSPOT_PIPELINE_ID must be set",
+        "HUBSPOT_STAGE_1_ID":  "Deal creation will fail — HUBSPOT_STAGE_1_ID must be set",
+    }
+    scraping_keys = ("APIFY_API_TOKEN", "SCRAPEBADGER_API_KEY")
+    reddit_keys   = ("REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET")
+
+    missing = []
+    for key, impact in required.items():
+        if not os.environ.get(key):
+            _vlog.warning("MISSING ENV VAR: %s — %s", key, impact)
+            missing.append(key)
+
+    if not any(os.environ.get(k) for k in scraping_keys):
+        _vlog.warning(
+            "MISSING ENV VAR: APIFY_API_TOKEN or SCRAPEBADGER_API_KEY — "
+            "LinkedIn/Facebook scraping will be skipped"
+        )
+        missing.append("APIFY_API_TOKEN")
+
+    if not all(os.environ.get(k) for k in reddit_keys):
+        _vlog.warning(
+            "MISSING ENV VAR: REDDIT_CLIENT_ID / REDDIT_CLIENT_SECRET — "
+            "Reddit scraping will fail"
+        )
+        missing.append("REDDIT_CLIENT_ID")
+
+    if missing:
+        _vlog.warning(
+            "AltusFlow started with %d missing required variable(s). "
+            "Configure them via the Connections dashboard or .env file. "
+            "Run: python scripts/fetch_hubspot_stages.py to get HubSpot pipeline/stage IDs.",
+            len(missing),
+        )
+    else:
+        _vlog.info("AltusFlow env validation passed — all required variables are set.")
+
+
+_validate_env()
 init_db()  # create all tables before the scheduler/orchestrator start
 
 
@@ -487,19 +534,35 @@ def health():
     UptimeRobot-ready health endpoint.
     Returns 200 always so Railway deployments pass. Only flags alert:true
     when a scan has previously run but is now overdue (not on fresh installs).
+    Also surfaces missing required API keys for quick diagnosis.
     """
     try:
         clients = get_health_data()
         # "never" means fresh install — not an alert condition
-        alert = any(
+        scan_alert = any(
             c["hours_since_scan"] > ALERT_HOURS
             for c in clients
             if c.get("last_scan_status") != "never"
         )
+
+        _required_keys = [
+            "ANTHROPIC_API_KEY", "HUBSPOT_TOKEN",
+            "HUBSPOT_PIPELINE_ID", "HUBSPOT_STAGE_1_ID",
+        ]
+        _scraping_keys = ("APIFY_API_TOKEN", "SCRAPEBADGER_API_KEY")
+        _reddit_keys   = ("REDDIT_CLIENT_ID", "REDDIT_CLIENT_SECRET")
+
+        config_checks = {k: bool(os.environ.get(k)) for k in _required_keys}
+        config_checks["scraping"]     = any(os.environ.get(k) for k in _scraping_keys)
+        config_checks["reddit"]       = all(os.environ.get(k) for k in _reddit_keys)
+        config_ok = all(config_checks.values())
+
+        alert = scan_alert or not config_ok
         payload = {
             "status":    "degraded" if alert else "ok",
             "clients":   clients,
             "platforms": get_platform_health(),
+            "config":    config_checks,
             "alert":     alert,
         }
     except Exception:

@@ -3,7 +3,9 @@ Flask Blueprint: /api/* — Dashboard REST API
 """
 from flask import Blueprint, request, jsonify, abort, send_file, session, g as _g
 from flask_login import login_required, current_user
-import io, csv, json
+import io, csv, json, logging
+
+_log = logging.getLogger(__name__)
 
 try:
     from crm import get_adapter as _get_crm, active_provider as _crm_provider
@@ -250,8 +252,8 @@ def send_prospect_reddit_dm(pid):
                 message=message_body,
                 disclosure_appended=prospect.get('disclosure_appended', False),
             )
-        except Exception:
-            pass
+        except Exception as e:
+            _log.warning("mark_prospect_sent(%s) failed after Reddit DM: %s", pid, e)
 
     return jsonify(result)
 
@@ -1003,8 +1005,8 @@ def upload_call_recording():
                 summary = p.get('summary', '')
                 outcome = p.get('outcome', 'uploaded')
                 learnings = p.get('learnings', [])
-            except Exception:
-                pass
+            except Exception as e:
+                _log.warning("Claude call transcript parse failed: %s", e)
 
         # ── Build transcript lines ────────────────────────────────────────────
         transcript_lines = []
@@ -1100,8 +1102,8 @@ def pod_pause(slug):
     try:
         from scheduler import pause_pod
         pause_pod(slug)
-    except Exception:
-        pass
+    except Exception as e:
+        _log.warning("pod_pause(%s) failed: %s", slug, e)
     return jsonify({'ok': True})
 
 
@@ -1111,8 +1113,8 @@ def pod_resume(slug):
     try:
         from scheduler import resume_pod
         resume_pod(slug)
-    except Exception:
-        pass
+    except Exception as e:
+        _log.warning("pod_resume(%s) failed: %s", slug, e)
     return jsonify({'ok': True})
 
 
@@ -1122,8 +1124,8 @@ def pod_reset(slug):
     try:
         from scheduler import reset_circuit_breaker
         reset_circuit_breaker(slug)
-    except Exception:
-        pass
+    except Exception as e:
+        _log.warning("pod_reset(%s) failed: %s", slug, e)
     return jsonify({'ok': True})
 
 
@@ -1134,8 +1136,8 @@ def pod_run_now(slug):
         from scheduler import run_now
         tenant = getattr(_g, 'tenant_slug', None) or getattr(current_user, 'tenant_slug', None)
         run_now(tenant_slug=tenant)
-    except Exception:
-        pass
+    except Exception as e:
+        _log.warning("pod_run_now(%s) failed: %s", slug, e)
     return jsonify({'ok': True})
 
 

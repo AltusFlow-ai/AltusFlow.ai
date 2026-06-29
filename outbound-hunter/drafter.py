@@ -23,6 +23,8 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 MODEL             = "claude-sonnet-4-6"
 CLIENT_ID         = os.environ.get("CLIENT_ID", "ALT00")
 SITE_URL          = os.environ.get("SITE_URL", "https://altusflow.ai")
+SENDER_NAME       = os.environ.get("SENDER_NAME", "Austin")
+SENDER_COMPANY    = os.environ.get("SENDER_COMPANY", "AltusFlow.ai")
 
 
 # ── UTM helpers ───────────────────────────────────────────────────────────────
@@ -58,7 +60,7 @@ def build_cta_url(signal_phrase, platform="linkedin", client_id=None):
 
 # ── System prompt ─────────────────────────────────────────────────────────────
 
-SYSTEM_PROMPT = """You are writing Reddit and X/Twitter outreach messages for Austin at AltusFlow.ai.
+SYSTEM_PROMPT = f"""You are writing Reddit and X/Twitter outreach messages for {SENDER_NAME} at {SENDER_COMPANY}.
 
 AltusFlow builds automated growth systems for high-value B2B businesses — three components:
 1. A custom-trained AI assistant on their website that qualifies leads and books calls 24/7
