@@ -1,15 +1,10 @@
 """
 scrapers/reddit.py
-Scans Reddit for signal posts using the ScrapeBadger API.
+Scans Reddit for signal posts using Reddit's free public JSON API.
 
-Replaces PRAW and the now-deprecated unauthenticated .json endpoints.
-ScrapeBadger handles Reddit auth, rate limiting, and session management.
-
-Setup:
-  1. Sign up at scrapebadger.com and get your API key
-  2. Add to Railway env vars: SCRAPEBADGER_API_KEY=your_key
-
-Cost: 2 credits per search or subreddit fetch.
+No API key required — uses reddit.com/.json endpoints which are publicly
+accessible. Rate limit: ~60 req/min; _RATE_FLOOR adds a 1s delay between
+calls to stay well within limits.
 
 DM sending: set REDDIT_USERNAME + REDDIT_PASSWORD + REDDIT_CLIENT_ID +
 REDDIT_CLIENT_SECRET if you want to send DMs directly. Without them,
@@ -21,10 +16,7 @@ import time
 
 import requests
 
-# ── Env vars ───────────────────────────────────────────────────────────────────
-# SCRAPEBADGER_API_KEY is read dynamically (see _get_api_key) so that keys
-# saved via the Settings dashboard are picked up by background scan threads.
-REDDIT_USER_AGENT    = os.environ.get("REDDIT_USER_AGENT", "AltusFlowHunter/1.0")
+REDDIT_USER_AGENT = os.environ.get("REDDIT_USER_AGENT", "AltusFlowHunter/1.0")
 
 
 def _get_reddit_creds() -> dict:
@@ -49,30 +41,7 @@ def _get_reddit_creds() -> dict:
         return {"client_id": "", "client_secret": "", "username": "", "password": ""}
 
 
-# Module-level aliases kept for backward compatibility — do not use directly.
-REDDIT_CLIENT_ID     = ""
-REDDIT_CLIENT_SECRET = ""
-REDDIT_USERNAME      = ""
-REDDIT_PASSWORD      = ""
-
-
-def _get_api_key() -> str:
-    """Read ScrapeBadger key fresh each call: env var first, then tenant_settings DB."""
-    key = os.environ.get("SCRAPEBADGER_API_KEY", "")
-    if key:
-        return key
-    try:
-        from database import get_settings
-        return get_settings().get("scrapebadger_key", "") or ""
-    except Exception:
-        return ""
-
-
-# Module-level alias kept for any external callers that reference it directly.
-# Always call _get_api_key() internally so background threads see the live value.
-SCRAPEBADGER_API_KEY = ""  # resolved dynamically — do not use directly
-
-SCRAPEBADGER_BASE = "https://api.scrapebadger.io/v1/reddit"
+REDDIT_PUBLIC_BASE = "https://www.reddit.com"
 
 # ── ICP boost constants ────────────────────────────────────────────────────────
 UPVOTE_BOOST_THRESHOLD = 10
@@ -109,10 +78,7 @@ except Exception:
 
 def _session() -> requests.Session:
     s = requests.Session()
-    s.headers.update({
-        "Authorization": f"Bearer {_get_api_key()}",
-        "User-Agent": REDDIT_USER_AGENT,
-    })
+    s.headers.update({"User-Agent": REDDIT_USER_AGENT})
     return s
 
 
@@ -120,7 +86,7 @@ def _session() -> requests.Session:
 
 def get_reddit_client():
     """Kept for backward compatibility — returns a truthy sentinel."""
-    return _session() if _get_api_key() else None
+    return _session()
 
 
 # ── DM sending (optional — requires PRAW + full Reddit credentials) ────────────
@@ -152,24 +118,16 @@ def send_reddit_dm(username: str, subject: str, body: str) -> dict:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
 
-# ── ScrapeBadger API helpers ───────────────────────────────────────────────────
+# ── Reddit public JSON API helpers ─────────────────────────────────────────────
 
-def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
-            run_id=None, context: str = "") -> dict | None:
+def _reddit_get(session: requests.Session, url: str, params: dict = None,
+                run_id=None, context: str = "") -> list:
     """
-    GET a ScrapeBadger Reddit endpoint with retry on 429.
-    Endpoint is relative to SCRAPEBADGER_BASE, e.g. '/search/posts'.
+    GET a Reddit public JSON endpoint and return the list of post dicts.
+    Uses reddit.com/.json — no API key required.
     """
-    if not _get_api_key():
-        _log_error(
-            run_id, "reddit_scraper",
-            "SCRAPEBADGER_API_KEY not set — Reddit scraping skipped. "
-            "Add it to Railway env vars or paste it in Settings → Connections.",
-            _CRIT,
-        )
-        return None
-
-    url = SCRAPEBADGER_BASE + endpoint
+    import logging as _l2
+    _lg = _l2.getLogger(__name__)
 
     for attempt in range(3):
         try:
@@ -178,49 +136,37 @@ def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
 
             if r.status_code == 200:
                 data = r.json()
-                import logging as _l2
-                _l2.getLogger(__name__).info("[reddit] ScrapeBadger %s → 200, posts=%d",
-                    context, len(data.get('posts', [])))
-                return data
+                posts = _extract_posts(data)
+                _lg.info("[reddit] %s → 200, posts=%d", context, len(posts))
+                return posts
 
             if r.status_code == 429:
                 wait = int(r.headers.get("Retry-After", 65))
-                _log_error(
-                    run_id, "reddit_scraper",
-                    f"429 on {context} — waiting {wait}s (attempt {attempt + 1}/3)",
-                    _WARN,
-                )
+                _log_error(run_id, "reddit_scraper",
+                    f"429 on {context} — waiting {wait}s (attempt {attempt+1}/3)", _WARN)
                 time.sleep(wait)
                 continue
 
-            if r.status_code == 401:
-                _log_error(
-                    run_id, "reddit_scraper",
-                    f"ScrapeBadger 401 on {context} — API key invalid or expired. "
-                    "Check SCRAPEBADGER_API_KEY in Railway. Body: " + r.text[:200],
-                    _CRIT,
-                )
-                return None
-
-            _log_error(
-                run_id, "reddit_scraper",
-                f"ScrapeBadger HTTP {r.status_code} on {context} — body: {r.text[:200]}",
-                _WARN,
-            )
-            return None
+            _log_error(run_id, "reddit_scraper",
+                f"HTTP {r.status_code} on {context} — body: {r.text[:200]}", _WARN)
+            return []
 
         except requests.RequestException as e:
             _log_error(run_id, "reddit_scraper", f"Request error on {context}: {e}", _WARN)
             time.sleep(5)
 
-    return None
+    return []
 
 
-def _extract_posts(data: dict) -> list:
-    """Pull post list from a ScrapeBadger response."""
+def _extract_posts(data) -> list:
+    """Pull post list from a Reddit public JSON response."""
     if not data:
         return []
-    return data.get("posts", [])
+    # Reddit JSON: {"data": {"children": [{"data": {...}}, ...]}}
+    if isinstance(data, dict) and "data" in data:
+        children = data["data"].get("children", [])
+        return [c["data"] for c in children if isinstance(c.get("data"), dict)]
+    return []
 
 
 # ── Signal matching & prospect building ───────────────────────────────────────
@@ -257,16 +203,20 @@ def _reddit_icp_boost(post: dict, subreddit_name: str, signal_phrases: list) -> 
 
 
 def _post_to_prospect(post: dict, niche_slug: str, matched_phrase: str) -> dict:
-    """Convert a ScrapeBadger post dict to a standard prospect dict."""
+    """Convert a Reddit JSON post dict to a standard prospect dict."""
     username  = post.get("author") or "deleted"
     title     = post.get("title") or ""
     selftext  = post.get("selftext") or ""
     post_text = title + ("\n\n" + selftext if selftext else "")
     subreddit = post.get("subreddit") or ""
     post_id   = post.get("id") or ""
+    permalink = post.get("permalink") or ""
 
-    # ScrapeBadger returns url field; for self posts it's the Reddit URL
-    post_url = post.get("url") or f"https://www.reddit.com/r/{subreddit}/comments/{post_id}/"
+    # Build canonical Reddit URL from permalink, fallback to constructed URL
+    if permalink:
+        post_url = f"https://www.reddit.com{permalink}"
+    else:
+        post_url = f"https://www.reddit.com/r/{subreddit}/comments/{post_id}/"
 
     method = "reddit_dm" if _can_send_dms() else "find_linkedin"
 
@@ -297,30 +247,31 @@ def _post_to_prospect(post: dict, niche_slug: str, matched_phrase: str) -> dict:
 def scan_subreddit(session, subreddit_name: str, signal_phrases: list,
                    niche_slug: str, run_id=None) -> list:
     """
-    Scan one subreddit via ScrapeBadger:
+    Scan one subreddit via Reddit's free public JSON API.
       1. Search for each signal phrase within the subreddit.
-      2. Fetch new posts and filter locally to catch anything search missed.
+      2. Fetch newest posts and filter locally to catch anything search missed.
     """
     results  = []
     seen_ids = set()
 
     # ── Signal phrase search (restricted to this subreddit) ───────────────────
     for phrase in signal_phrases:
-        data = _sb_get(
+        posts = _reddit_get(
             session,
-            "/search/posts",
+            f"{REDDIT_PUBLIC_BASE}/r/{subreddit_name}/search.json",
             params={
-                "q":     f"{phrase} subreddit:{subreddit_name}",
-                "sort":  "new",
-                "limit": MAX_POSTS_PER_SEARCH,
+                "q":           phrase,
+                "restrict_sr": "1",
+                "sort":        "new",
+                "limit":       MAX_POSTS_PER_SEARCH,
             },
             run_id=run_id,
             context=f"r/{subreddit_name} search '{phrase}'",
         )
-        for post in _extract_posts(data):
+        for post in posts:
             pid    = post.get("id")
             author = post.get("author")
-            if not pid or pid in seen_ids or not author or author in ("deleted", "[deleted]"):
+            if not pid or pid in seen_ids or not author or author in ("deleted", "[deleted]", "AutoModerator"):
                 continue
             matched = _matches_signal(post, signal_phrases)
             if not matched:
@@ -333,17 +284,17 @@ def scan_subreddit(session, subreddit_name: str, signal_phrases: list,
             results.append(p)
 
     # ── New posts sweep — catch anything search missed ────────────────────────
-    data = _sb_get(
+    posts = _reddit_get(
         session,
-        f"/subreddits/{subreddit_name}/posts",
-        params={"sort": "new", "limit": MAX_POSTS_PER_SEARCH},
+        f"{REDDIT_PUBLIC_BASE}/r/{subreddit_name}/new.json",
+        params={"limit": MAX_POSTS_PER_SEARCH},
         run_id=run_id,
         context=f"r/{subreddit_name} new posts",
     )
-    for post in _extract_posts(data):
+    for post in posts:
         pid    = post.get("id")
         author = post.get("author")
-        if not pid or pid in seen_ids or not author or author in ("deleted", "[deleted]"):
+        if not pid or pid in seen_ids or not author or author in ("deleted", "[deleted]", "AutoModerator"):
             continue
         matched = _matches_signal(post, signal_phrases)
         if not matched:
@@ -362,23 +313,11 @@ def scan_subreddit(session, subreddit_name: str, signal_phrases: list,
 # ── Public entry points (same signatures as original) ─────────────────────────
 
 def run_niche_search(niche_slug: str, run_id=None) -> list:
-    """Scan all subreddits for a single niche."""
+    """Scan all subreddits for a single niche via Reddit public JSON API."""
     import logging as _logging
     _lg = _logging.getLogger(__name__)
 
     from scrapers.niches import get_reddit_subreddits, get_signal_phrases
-
-    key = _get_api_key()
-    _lg.info("[reddit] run_niche_search niche=%r key_found=%s", niche_slug, bool(key))
-
-    if not key:
-        _log_error(
-            run_id, "reddit_scraper",
-            "SCRAPEBADGER_API_KEY not configured — Reddit scan skipped. "
-            "Add it to Railway env vars or paste it in Settings → Connections.",
-            _CRIT,
-        )
-        return []
 
     subreddits     = get_reddit_subreddits(niche_slug)
     signal_phrases = get_signal_phrases(niche_slug)
@@ -389,7 +328,7 @@ def run_niche_search(niche_slug: str, run_id=None) -> list:
         _lg.warning("[reddit] niche=%r has no subreddits configured", niche_slug)
         return []
 
-    _lg.info("[reddit] scanning %d subreddits for %s via ScrapeBadger...", len(subreddits), niche_slug)
+    _lg.info("[reddit] scanning %d subreddits for %s via Reddit public API...", len(subreddits), niche_slug)
     session     = _session()
     all_results = []
     seen_keys   = set()
