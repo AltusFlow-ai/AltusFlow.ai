@@ -72,7 +72,7 @@ def _get_api_key() -> str:
 # Always call _get_api_key() internally so background threads see the live value.
 SCRAPEBADGER_API_KEY = ""  # resolved dynamically — do not use directly
 
-SCRAPEBADGER_BASE = "https://api.scrapebadger.com/v1/reddit"
+SCRAPEBADGER_BASE = "https://api.scrapebadger.io/v1/reddit"
 
 # ── ICP boost constants ────────────────────────────────────────────────────────
 UPVOTE_BOOST_THRESHOLD = 10
