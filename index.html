@@ -610,17 +610,24 @@
       const name = document.getElementById('name').value.trim();
       btn.textContent = 'Submitting...';
       btn.disabled = true;
-      const data = {
-        email:     document.getElementById('email').value.trim(),
-        firstName: name.split(' ')[0],
-        lastName:  name.split(' ').slice(1).join(' '),
-        website:   document.getElementById('website').value.trim(),
-        utm: {
-          altusflow_vertical:             document.getElementById('bottleneck').value,
-          altusflow_client_id:            'ALT00',
-          altusflow_first_touch_campaign: 'Website Form',
-        }
+
+      // Capture UTM params from the landing page URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const utms = {
+        utm_source:   urlParams.get('utm_source')   || 'organic',
+        utm_medium:   urlParams.get('utm_medium')   || '',
+        utm_campaign: urlParams.get('utm_campaign') || 'Website Form',
+        utm_content:  urlParams.get('utm_content')  || document.getElementById('bottleneck').value,
       };
+
+      const data = {
+        email:                           document.getElementById('email').value.trim(),
+        niche:                           'trading-coaches',
+        altusflow_lead_source_vertical:  document.getElementById('bottleneck').value,
+        altusflow_client_portal_id:      'ALT00',
+        utms:                            utms,
+      };
+
       try {
         const res = await fetch('/api/hubspot/contact', {
           method: 'POST',
