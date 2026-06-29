@@ -94,8 +94,13 @@ def _run_reddit_niche(niche_slug, run_id):
     from scrapers.reddit import run_niche_search
     print(f"\n[{niche_slug}] Reddit search...")
     try:
-        return run_niche_search(niche_slug, run_id=run_id)
+        results = run_niche_search(niche_slug, run_id=run_id)
+        print(f"[{niche_slug}] Reddit search done — {len(results)} prospects")
+        return results
     except Exception as e:
+        import traceback
+        print(f"[{niche_slug}] Reddit scraper CRASHED: {type(e).__name__}: {e}")
+        print(traceback.format_exc())
         log_pipeline_error(
             run_id, "reddit_scraper",
             f"[{niche_slug}] Reddit scraper failed: {type(e).__name__}: {e}",
