@@ -46,12 +46,16 @@ _is_running       = False  # flipped inside the lock; readable outside for statu
 _calendly_running = False
 
 
-def _run_pipeline():
+def _run_pipeline(forced_tenant_slug=None):
     """
     Actual job function — called both by the cron trigger and by run_now().
     Iterates over all active tenants and runs the full pipeline for each one.
     Never raises: any unhandled exception is logged and swallowed so the
     BackgroundScheduler thread stays alive.
+
+    forced_tenant_slug: when supplied by run_now() from a logged-in request,
+    skip tenant discovery and run directly for this slug. This guarantees
+    the background thread writes to the correct tenant DB.
     """
     global _is_running
 
@@ -64,39 +68,38 @@ def _run_pipeline():
         _is_running = True
 
         # ── Pause check ───────────────────────────────────────────────────────
-        # Read from the first active tenant's DB for global pause state.
-        # Individual niche pauses are checked inside _run_niche_agent() in main.py.
         state = get_scheduler_state()
         if state and state.get("is_paused"):
             reason = state.get("paused_reason") or "no reason given"
             logger.info("Scheduler is paused (%s) — skipping run.", reason)
             return
 
-        # ── Get active tenants ────────────────────────────────────────────────
-        try:
-            from master_db import get_active_tenants
-            tenants = get_active_tenants()
-        except Exception:
-            # master_db not initialised yet (legacy single-tenant mode)
-            tenants = []
+        # ── Tenant resolution ─────────────────────────────────────────────────
+        if forced_tenant_slug:
+            # Called from a logged-in HTTP request — use the known tenant directly.
+            tenants = [{"slug": forced_tenant_slug}]
+            logger.info("Manual scan triggered for tenant: %s", forced_tenant_slug)
+        else:
+            # Cron trigger — discover tenants from master_db or filesystem.
+            try:
+                from master_db import get_active_tenants
+                tenants = get_active_tenants()
+            except Exception:
+                tenants = []
 
-        if not tenants:
-            # Try to auto-detect tenant slugs from the tenants/ directory on disk.
-            # This covers Railway deploys where master_db hasn't been seeded yet
-            # but a tenant DB already exists from a previous create_admin.py run.
-            import glob as _glob
-            found = sorted(_glob.glob(os.path.join("tenants", "*", "outbound_hunter.db")))
-            if found:
-                tenants = [{"slug": os.path.basename(os.path.dirname(p))} for p in found]
-                logger.info("Auto-detected %d tenant(s) from filesystem: %s",
-                            len(tenants), [t["slug"] for t in tenants])
-            else:
-                # True legacy single-tenant mode — no tenant dirs at all
-                logger.info("No tenants found — running in single-tenant mode (no DB context).")
-                _run_tenant_pipeline(None)
-                return
+            if not tenants:
+                import glob as _glob
+                found = sorted(_glob.glob(os.path.join("tenants", "*", "outbound_hunter.db")))
+                if found:
+                    tenants = [{"slug": os.path.basename(os.path.dirname(p))} for p in found]
+                    logger.info("Auto-detected %d tenant(s) from filesystem: %s",
+                                len(tenants), [t["slug"] for t in tenants])
+                else:
+                    logger.info("No tenants found — running in single-tenant mode (no DB context).")
+                    _run_tenant_pipeline(None)
+                    return
 
-        # ── Multi-tenant: run for each active tenant ──────────────────────────
+        # ── Run pipeline for each tenant ──────────────────────────────────────
         for tenant in tenants:
             slug = tenant["slug"]
             logger.info("Starting pipeline for tenant: %s", slug)
@@ -585,11 +588,14 @@ def run_pod_now(slug: str):
     return run_now()
 
 
-def run_now():
+def run_now(tenant_slug=None):
     """
     Trigger an immediate scan in a background thread.
     Respects the same concurrent-run guard as the cron trigger.
     Does NOT bypass the pause check — call resume() first if paused.
+
+    tenant_slug: when called from a logged-in request, pass the current
+    user's tenant slug so the background thread writes to the right DB.
 
     Returns (started: bool, message: str).
     """
@@ -601,7 +607,12 @@ def run_now():
         reason = state.get("paused_reason") or "paused"
         return False, f"Scheduler is paused: {reason}. Resume it first from the admin page."
 
-    t = threading.Thread(target=_run_pipeline, name="manual_scan", daemon=True)
+    t = threading.Thread(
+        target=_run_pipeline,
+        args=(tenant_slug,),
+        name="manual_scan",
+        daemon=True,
+    )
     t.start()
     return True, "Scan started in the background."
 
