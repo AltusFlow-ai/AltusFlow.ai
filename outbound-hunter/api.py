@@ -1,7 +1,7 @@
 """
 Flask Blueprint: /api/* — Dashboard REST API
 """
-from flask import Blueprint, request, jsonify, abort, send_file, session
+from flask import Blueprint, request, jsonify, abort, send_file, session, g as _g
 from flask_login import login_required, current_user
 import io, csv, json
 
@@ -2360,6 +2360,100 @@ def _ensure_creator_table():
             """))
     except Exception:
         pass
+
+
+# ── Debug / diagnostics ──────────────────────────────────────────────────────
+
+@api.route('/debug/scan-test')
+@login_required
+def debug_scan_test():
+    """
+    Run a single live ScrapeBadger search and return raw results.
+    Use this to diagnose why Run All Scans finds nothing.
+    Visit /api/debug/scan-test in your browser while logged in.
+    """
+    import os as _os
+    import traceback as _tb
+
+    report = {}
+
+    # 1. Key resolution
+    tenant_slug = getattr(_g, 'tenant_slug', None) or 'unknown'
+    report['tenant_slug'] = tenant_slug
+
+    try:
+        from scrapers.reddit import _get_api_key
+        key = _get_api_key()
+        report['scrapebadger_key_found'] = bool(key)
+        report['scrapebadger_key_prefix'] = key[:8] + '...' if key else None
+        report['scrapebadger_key_source'] = (
+            'env_var' if _os.environ.get('SCRAPEBADGER_API_KEY') else
+            'tenant_db' if key else 'NOT FOUND'
+        )
+    except Exception as exc:
+        report['key_error'] = str(exc)
+        key = ''
+
+    # 2. Anthropic key
+    try:
+        ak = _os.environ.get('ANTHROPIC_API_KEY', '')
+        report['anthropic_key_found'] = bool(ak)
+        report['anthropic_key_prefix'] = ak[:8] + '...' if ak else None
+    except Exception as exc:
+        report['anthropic_key_error'] = str(exc)
+
+    # 3. Active niches
+    try:
+        from scrapers.niches import get_all_slugs
+        report['active_niches'] = get_all_slugs()
+    except Exception as exc:
+        report['niches_error'] = str(exc)
+
+    # 4. Live ScrapeBadger test — one real search
+    if key:
+        import requests as _req
+        try:
+            url = 'https://api.scrapebadger.com/v1/reddit/search/posts'
+            resp = _req.get(url, params={
+                'q': 'prop firm failed subreddit:Daytrading',
+                'sort': 'new', 'limit': 5,
+            }, headers={
+                'Authorization': f'Bearer {key}',
+                'User-Agent': 'AltusFlowDebug/1.0',
+            }, timeout=15)
+            report['scrapebadger_status'] = resp.status_code
+            report['scrapebadger_response'] = resp.json() if resp.status_code == 200 else resp.text[:500]
+        except Exception as exc:
+            report['scrapebadger_error'] = str(exc)
+            report['scrapebadger_traceback'] = _tb.format_exc()[-800:]
+
+        # Also try .io domain in case endpoint changed
+        try:
+            url2 = 'https://api.scrapebadger.io/v1/reddit/search'
+            resp2 = _req.post(url2, json={
+                'query': 'prop firm failed', 'limit': 5,
+            }, headers={
+                'Authorization': f'Bearer {key}',
+                'Content-Type': 'application/json',
+            }, timeout=15)
+            report['scrapebadger_io_status'] = resp2.status_code
+            report['scrapebadger_io_response'] = resp2.json() if resp2.status_code == 200 else resp2.text[:500]
+        except Exception as exc:
+            report['scrapebadger_io_error'] = str(exc)
+    else:
+        report['scrapebadger_test'] = 'SKIPPED — no key found'
+
+    # 5. Prospects count in DB
+    try:
+        from database import _reader
+        from sqlalchemy import text as _text
+        with _reader() as conn:
+            n = conn.execute(_text('SELECT COUNT(*) FROM prospects')).fetchone()[0]
+        report['prospects_in_db'] = n
+    except Exception as exc:
+        report['db_error'] = str(exc)
+
+    return jsonify(report)
 
 
 # ── Live Stream ───────────────────────────────────────────────────────────────
