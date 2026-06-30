@@ -18,7 +18,7 @@ from datetime import datetime, timezone, timedelta
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine, text
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import NullPool
 
 # ── Engine setup ──────────────────────────────────────────────────────────────
 
@@ -77,8 +77,8 @@ def _get_engine():
             os.makedirs(os.path.dirname(db_path), exist_ok=True)
             _engines[slug] = create_engine(
                 f"sqlite:///{db_path}",
-                connect_args={"check_same_thread": False},
-                poolclass=StaticPool,
+                connect_args={"check_same_thread": False, "timeout": 30},
+                poolclass=NullPool,
             )
             # Bootstrap schema for this tenant's fresh DB
             try:
@@ -94,8 +94,8 @@ def _get_engine():
         if _is_sqlite:
             _engine = create_engine(
                 _DATABASE_URL,
-                connect_args={"check_same_thread": False},
-                poolclass=StaticPool,
+                connect_args={"check_same_thread": False, "timeout": 30},
+                poolclass=NullPool,
             )
         else:
             _engine = create_engine(
