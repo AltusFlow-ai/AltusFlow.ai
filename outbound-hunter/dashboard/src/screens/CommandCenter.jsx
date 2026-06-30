@@ -225,9 +225,16 @@ export default function CommandCenter() {
   const handleRunAll = useCallback(async () => {
     setRunningAll(true)
     try {
-      await fetch('/api/command-center/run-all', { method: 'POST' })
+      const r = await fetch('/api/command-center/run-all', { method: 'POST' })
+      const data = await r.json().catch(() => ({}))
+      if (!r.ok || data.ok === false) {
+        alert(`Scan failed to start: ${data.error || data.message || `HTTP ${r.status}`}`)
+      } else {
+        alert(data.message || 'Scan started.')
+      }
       setTimeout(() => { setRunningAll(false); load() }, 4000)
-    } catch {
+    } catch (e) {
+      alert(`Scan request failed: ${e.message}`)
       setRunningAll(false)
     }
   }, [load])
