@@ -59,20 +59,8 @@ PROFESSIONAL_SUBREDDITS = {
     'agency', 'freelance',
 }
 
-MAX_POSTS_PER_SEARCH = int(os.environ.get("REDDIT_POSTS_PER_SEARCH", "50"))
+MAX_POSTS_PER_SEARCH = int(os.environ.get("REDDIT_POSTS_PER_SEARCH", "25"))
 _RATE_FLOOR = 1.0  # seconds between requests
-
-# ── Error logger (optional dep) ────────────────────────────────────────────────
-try:
-    from error_logger import log_pipeline_error, WARNING, CRITICAL
-    _log_error = log_pipeline_error
-    _WARN = WARNING
-    _CRIT = CRITICAL
-except Exception:
-    def _log_error(run_id, source, msg, sev=None, **kw):
-        print(f"[{source}] {msg}")
-    _WARN = "warning"
-    _CRIT = "critical"
 
 
 # ── HTTP session ───────────────────────────────────────────────────────────────
@@ -136,23 +124,24 @@ def send_reddit_dm(username: str, subject: str, body: str) -> dict:
 
 # ── HTTP helpers (ScrapeBadger + Reddit public fallback) ───────────────────────
 
+_MAX_RETRIES  = 2
+_MAX_WAIT     = 8   # cap retry-after / backoff so a run can never silently hang for minutes
+_REQ_TIMEOUT  = 10  # seconds
+
+
 def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
             run_id=None, context: str = "") -> list:
     """GET a ScrapeBadger endpoint; returns list of post dicts."""
-    import logging as _l2
-    _lg = _l2.getLogger(__name__)
     url = SCRAPEBADGER_BASE + endpoint
-    _lg.info("[SB] GET %s params=%s", url, params)
 
-    for attempt in range(3):
+    for attempt in range(_MAX_RETRIES):
         try:
-            r = session.get(url, params=params, timeout=20)
+            r = session.get(url, params=params, timeout=_REQ_TIMEOUT)
             time.sleep(_RATE_FLOOR)
-            _lg.info("[SB] %s → HTTP %d | body[:300]: %s", context, r.status_code, r.text[:300])
+            print(f"[SB] {context} → HTTP {r.status_code} | body[:200]: {r.text[:200]}")
 
             if r.status_code == 200:
                 data = r.json()
-                # Try every known SB response shape
                 posts = (
                     data.get("posts")
                     or data.get("items")
@@ -163,29 +152,23 @@ def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
                 if isinstance(posts, dict):
                     posts = posts.get("children", [])
                     posts = [p.get("data", p) for p in posts]
-                _lg.info("[SB] %s → 200, posts=%d, keys=%s", context, len(posts), list(data.keys()))
                 return posts
 
             if r.status_code == 429:
-                wait = int(r.headers.get("Retry-After", 65))
-                _log_error(run_id, "reddit_scraper",
-                    f"ScrapeBadger 429 on {context} — waiting {wait}s", _WARN)
+                wait = min(int(r.headers.get("Retry-After", _MAX_WAIT)), _MAX_WAIT)
+                print(f"[SB] 429 on {context} — waiting {wait}s (attempt {attempt+1}/{_MAX_RETRIES})")
                 time.sleep(wait)
                 continue
 
             if r.status_code in (401, 403):
-                _log_error(run_id, "reddit_scraper",
-                    f"ScrapeBadger {r.status_code} on {context} — auth failed. Body: {r.text[:300]}", _CRIT)
+                print(f"[SB] {r.status_code} on {context} — auth failed, check SCRAPEBADGER_API_KEY")
                 return []
 
-            _log_error(run_id, "reddit_scraper",
-                f"ScrapeBadger HTTP {r.status_code} on {context} — body: {r.text[:300]}", _WARN)
             return []
 
         except requests.RequestException as e:
-            _lg.error("[SB] request error on %s: %s", context, e)
-            _log_error(run_id, "reddit_scraper", f"ScrapeBadger request error on {context}: {e}", _WARN)
-            time.sleep(5)
+            print(f"[SB] request error on {context}: {e}")
+            time.sleep(2)
 
     return []
 
@@ -193,34 +176,29 @@ def _sb_get(session: requests.Session, endpoint: str, params: dict = None,
 def _reddit_get(session: requests.Session, url: str, params: dict = None,
                 run_id=None, context: str = "") -> list:
     """GET a Reddit public JSON endpoint; returns list of post dicts."""
-    import logging as _l2
-    _lg = _l2.getLogger(__name__)
-
-    for attempt in range(3):
+    for attempt in range(_MAX_RETRIES):
         try:
-            r = session.get(url, params=params, timeout=20)
+            r = session.get(url, params=params, timeout=_REQ_TIMEOUT)
             time.sleep(_RATE_FLOOR)
 
             if r.status_code == 200:
                 data = r.json()
                 posts = _extract_reddit_posts(data)
-                _lg.info("[reddit][public] %s → 200, posts=%d", context, len(posts))
+                print(f"[reddit][public] {context} → 200, posts={len(posts)}")
                 return posts
 
             if r.status_code == 429:
-                wait = int(r.headers.get("Retry-After", 65))
-                _log_error(run_id, "reddit_scraper",
-                    f"Reddit 429 on {context} — waiting {wait}s", _WARN)
+                wait = min(int(r.headers.get("Retry-After", _MAX_WAIT)), _MAX_WAIT)
+                print(f"[reddit][public] 429 on {context} — waiting {wait}s (attempt {attempt+1}/{_MAX_RETRIES})")
                 time.sleep(wait)
                 continue
 
-            _log_error(run_id, "reddit_scraper",
-                f"Reddit HTTP {r.status_code} on {context} — body: {r.text[:200]}", _WARN)
+            print(f"[reddit][public] HTTP {r.status_code} on {context} — body[:200]: {r.text[:200]}")
             return []
 
         except requests.RequestException as e:
-            _log_error(run_id, "reddit_scraper", f"Reddit request error on {context}: {e}", _WARN)
-            time.sleep(5)
+            print(f"[reddit][public] request error on {context}: {e}")
+            time.sleep(2)
 
     return []
 
@@ -310,61 +288,69 @@ def _post_to_prospect(post: dict, niche_slug: str, matched_phrase: str) -> dict:
 
 # ── Core scanner ──────────────────────────────────────────────────────────────
 
-def _fetch_posts(session, subreddit_name: str, phrase: str,
-                 use_sb: bool, run_id=None) -> list:
-    """Search + new-posts fetch for one phrase, routing to SB or public API."""
+def _fetch_new_posts(session, subreddit_name: str, use_sb: bool, run_id=None) -> list:
+    """Fetch newest posts for a subreddit — called once, not once per phrase."""
     if use_sb:
-        search = _sb_get(
-            session, "/search/posts",
-            params={"q": f"{phrase} subreddit:{subreddit_name}", "sort": "new", "limit": MAX_POSTS_PER_SEARCH},
-            run_id=run_id, context=f"r/{subreddit_name} search '{phrase}'",
-        )
-        new_posts = _sb_get(
+        return _sb_get(
             session, f"/subreddits/{subreddit_name}/posts",
             params={"sort": "new", "limit": MAX_POSTS_PER_SEARCH},
             run_id=run_id, context=f"r/{subreddit_name} new posts",
         )
-        return search + new_posts
-    else:
-        search = _reddit_get(
-            session,
-            f"{REDDIT_PUBLIC_BASE}/r/{subreddit_name}/search.json",
-            params={"q": phrase, "restrict_sr": "1", "sort": "new", "limit": MAX_POSTS_PER_SEARCH},
+    return _reddit_get(
+        session,
+        f"{REDDIT_PUBLIC_BASE}/r/{subreddit_name}/new.json",
+        params={"limit": MAX_POSTS_PER_SEARCH},
+        run_id=run_id, context=f"r/{subreddit_name} new posts",
+    )
+
+
+def _fetch_search(session, subreddit_name: str, phrase: str, use_sb: bool, run_id=None) -> list:
+    """Search a subreddit for one phrase."""
+    if use_sb:
+        return _sb_get(
+            session, "/search/posts",
+            params={"q": f"{phrase} subreddit:{subreddit_name}", "sort": "new", "limit": MAX_POSTS_PER_SEARCH},
             run_id=run_id, context=f"r/{subreddit_name} search '{phrase}'",
         )
-        new_posts = _reddit_get(
-            session,
-            f"{REDDIT_PUBLIC_BASE}/r/{subreddit_name}/new.json",
-            params={"limit": MAX_POSTS_PER_SEARCH},
-            run_id=run_id, context=f"r/{subreddit_name} new posts",
-        )
-        return search + new_posts
+    return _reddit_get(
+        session,
+        f"{REDDIT_PUBLIC_BASE}/r/{subreddit_name}/search.json",
+        params={"q": phrase, "restrict_sr": "1", "sort": "new", "limit": MAX_POSTS_PER_SEARCH},
+        run_id=run_id, context=f"r/{subreddit_name} search '{phrase}'",
+    )
 
 
 def scan_subreddit(session, subreddit_name: str, signal_phrases: list,
                    niche_slug: str, run_id=None) -> list:
     """
     Scan one subreddit — uses ScrapeBadger if key is set, otherwise Reddit public API.
+    New-posts sweep happens once; phrase search happens once per phrase.
     """
     use_sb   = bool(_get_api_key())
     results  = []
     seen_ids = set()
 
+    def _process(post):
+        pid    = post.get("id")
+        author = post.get("author")
+        if not pid or pid in seen_ids or not author or author in ("deleted", "[deleted]", "AutoModerator"):
+            return
+        matched = _matches_signal(post, signal_phrases)
+        if not matched:
+            return
+        seen_ids.add(pid)
+        p = _post_to_prospect(post, niche_slug, matched)
+        boost, boost_notes = _reddit_icp_boost(post, subreddit_name, signal_phrases)
+        p["_reddit_icp_boost"]   = boost
+        p["_reddit_boost_notes"] = boost_notes
+        results.append(p)
+
+    for post in _fetch_new_posts(session, subreddit_name, use_sb, run_id):
+        _process(post)
+
     for phrase in signal_phrases:
-        for post in _fetch_posts(session, subreddit_name, phrase, use_sb, run_id):
-            pid    = post.get("id")
-            author = post.get("author")
-            if not pid or pid in seen_ids or not author or author in ("deleted", "[deleted]", "AutoModerator"):
-                continue
-            matched = _matches_signal(post, signal_phrases)
-            if not matched:
-                continue
-            seen_ids.add(pid)
-            p = _post_to_prospect(post, niche_slug, matched)
-            boost, boost_notes = _reddit_icp_boost(post, subreddit_name, signal_phrases)
-            p["_reddit_icp_boost"]   = boost
-            p["_reddit_boost_notes"] = boost_notes
-            results.append(p)
+        for post in _fetch_search(session, subreddit_name, phrase, use_sb, run_id):
+            _process(post)
 
     print(f"[Reddit] [{niche_slug}] r/{subreddit_name}: {len(results)} signal posts ({'SB' if use_sb else 'public'})")
     return results
@@ -373,38 +359,32 @@ def scan_subreddit(session, subreddit_name: str, signal_phrases: list,
 # ── Public entry points (same signatures as original) ─────────────────────────
 
 def run_niche_search(niche_slug: str, run_id=None) -> list:
-    """Scan all subreddits for a single niche via Reddit public JSON API."""
-    import logging as _logging
-    _lg = _logging.getLogger(__name__)
-
+    """Scan all subreddits for a single niche."""
     from scrapers.niches import get_reddit_subreddits, get_signal_phrases
 
     subreddits     = get_reddit_subreddits(niche_slug)
     signal_phrases = get_signal_phrases(niche_slug)
 
-    _lg.info("[reddit] niche=%r subreddits=%r phrases=%r", niche_slug, subreddits, signal_phrases[:3])
-
     if not subreddits:
-        _lg.warning("[reddit] niche=%r has no subreddits configured", niche_slug)
+        print(f"[reddit] niche={niche_slug!r} has no subreddits configured")
         return []
 
     use_sb = bool(_get_api_key())
-    _lg.info("[reddit] scanning %d subreddits for %s via %s...",
-             len(subreddits), niche_slug, "ScrapeBadger" if use_sb else "Reddit public API")
+    print(f"[reddit] {niche_slug}: scanning {len(subreddits)} subreddits x {len(signal_phrases)} "
+          f"phrases via {'ScrapeBadger' if use_sb else 'Reddit public API'}...")
     session = _session(use_scrapebadger=use_sb)
     all_results = []
     seen_keys   = set()
 
     for subreddit in subreddits:
         posts = scan_subreddit(session, subreddit, signal_phrases, niche_slug, run_id=run_id)
-        _lg.info("[reddit] r/%s → %d signal posts", subreddit, len(posts))
         for p in posts:
             key = (p["handle"], p["post_url"])
             if key not in seen_keys:
                 seen_keys.add(key)
                 all_results.append(p)
 
-    _lg.info("[reddit] niche=%r total unique=%d", niche_slug, len(all_results))
+    print(f"[reddit] {niche_slug}: total unique={len(all_results)}")
     return all_results
 
 
